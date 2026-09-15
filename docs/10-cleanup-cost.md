@@ -63,7 +63,7 @@ bash scripts/teardown.sh --status
 
 ## 10.4. 削除後の確認
 
-C10: RG 消失・soft-delete・RG 外・Defender 復帰・翌日以降の費用を別々に記録します。未確認があれば Pending です。
+費用・後片付けの確認（C10）: RG 消失・soft-delete・RG 外・Defender 復帰・翌日以降の費用を別々に記録します。未確認があれば Pending です。
 
 ```bash
 bash scripts/verify.sh --section 9
