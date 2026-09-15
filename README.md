@@ -24,7 +24,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 1 | [準備と土台](docs/01-prerequisites.md) | RG・予算・Log Analytics ができる | 手順ドラフト |
 | 2 | [Key Vault を準備する](docs/02-key-vault.md) | 監査用 Key Vault ができる | 手順ドラフト |
 | 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | 操作ドラフト・Cosmos／Search は portal 代替・未実行 |
-| 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | 構成ドラフト・GUI／BYO 接続待ち |
+| 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | 操作ドラフト・接続のGA／通信／作成時認証の確認待ち |
 | 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分ける | 手順ドラフト |
 | 6 | [監視と監査を設定する](docs/06-monitoring.md) | 操作・本文の証跡を準備する | 構成ドラフト・本文トレース経路待ち |
 | 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 構成ドラフト・アプリ未実装 |
@@ -49,6 +49,8 @@ flowchart LR
   G --> M
   K[Key Vault: 独立した RBAC・監査検証] --> M
 ```
+
+第4章は、Cosmos DB 接続の GA 範囲、サービス間通信、作成時認証が未確定のため、リソース作成前に停止します。現時点では全章を通し実行できる完成手順ではありません。
 
 上図は検証の目標です。サービス間の IP 許可と本人トークンの経路は未確定で、第4・7章に停止条件を記載しています。Key Vault が Agent Service の必須接続先であることを示す図ではありません。
 
