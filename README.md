@@ -23,7 +23,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 0 | [事前確認と検証の進め方](docs/00-before-start.md) | 対象・予算・IP・試験ユーザーを決める | 手順ドラフト |
 | 1 | [準備と土台](docs/01-prerequisites.md) | RG・予算・Log Analytics ができる | 手順ドラフト |
 | 2 | [Key Vault を準備する](docs/02-key-vault.md) | 監査用 Key Vault ができる | 手順ドラフト |
-| 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | 構成ドラフト・GUI 詳細待ち |
+| 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | 操作ドラフト・Cosmos／Search は portal 代替・未実行 |
 | 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | 構成ドラフト・GUI／BYO 接続待ち |
 | 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分ける | 手順ドラフト |
 | 6 | [監視と監査を設定する](docs/06-monitoring.md) | 操作・本文の証跡を準備する | 構成ドラフト・本文トレース経路待ち |
