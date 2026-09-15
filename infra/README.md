@@ -74,3 +74,16 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 ---
 
 前へ: [準備](../docs/01-prerequisites.md) / 次へ: [データ基盤](../docs/11-data.md) / [トップに戻る](../README.md)
+
+## bicep build の状態（2026-09-15・Nia の Mac・Azure 未接続）
+
+- Bicep CLI 0.47.16（Homebrew の公式 tap `azure/bicep`）。Azure CLI は未導入。
+- `bicep build infra/main.bicep` は **エラー 0・警告 1** で通過。警告は公式 41 の `modules-standard/add-project-capability-host.bicep` の `capabilityHostKind`（BCP037・型定義側の不足）で、vendor は改変しないため残す。
+- 自前 module 6 本（`02_keyvault`・`03_network_acls`・`04_data`・`06_diagnostics`・`07_gateway_app`・`08_policy_defender`）はいずれも単体で build 通過。`03_network_acls` は for 式を `var` に出す修正を 2026-09-15 に実施。
+- **通過＝構文と型の整合だけ**。API バージョン・properties の実機での妥当性、権限、クォータは Run 1 で確認する。デプロイはしていない。
+- 再実行:
+
+```bash
+bicep build infra/main.bicep --stdout > /dev/null
+```
+実行結果の確認ポイント: 終了コード 0 で、`Error` 行が無いこと。`infra/vendor/` が無い場合は先に「対象と固定方法」の手順で取得します。
