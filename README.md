@@ -25,7 +25,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 2 | [Key Vault を準備する](docs/02-key-vault.md) | 監査用 Key Vault ができる | 手順ドラフト |
 | 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | 操作ドラフト・Cosmos／Search は portal 代替・未実行 |
 | 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | 操作ドラフト・接続のGA／通信／作成時認証の確認待ち |
-| 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分ける | 手順ドラフト |
+| 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分ける | 操作ドラフト・Consumer は Cloud Shell 代替・第4章完了後に実行 |
 | 6 | [監視と監査を設定する](docs/06-monitoring.md) | 操作・本文の証跡を準備する | 構成ドラフト・本文トレース経路待ち |
 | 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 構成ドラフト・アプリ未実装 |
 | 8 | [権限・認証・ネットワークの統制を試す](docs/08-governance-tests.md) | 許可／拒否・IP・quota を比較する | 試験ドラフト・第7章の完成待ち |
