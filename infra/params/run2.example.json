@@ -1,0 +1,94 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_comment": "要確認：公式15向け実param名。ラッパ41には渡さない。deploy.shはRun 2の分岐未実装で停止。VNet背後tools非対応・Monitor PE/DNS追加・App Insights認証と費用の差をレビュー。ACRは本編対象外としてfalse。",
+    "reviewRequired": true
+  },
+  "parameters": {
+    "location": {
+      "value": "japaneast"
+    },
+    "aiServices": {
+      "value": "lab"
+    },
+    "firstProjectName": {
+      "value": "project"
+    },
+    "projectDescription": {
+      "value": "エージェント統制の個人検証"
+    },
+    "displayName": {
+      "value": "エージェント統制検証"
+    },
+    "modelName": {
+      "value": "gpt-5-mini"
+    },
+    "modelFormat": {
+      "value": "OpenAI"
+    },
+    "modelVersion": {
+      "value": "<model-version>"
+    },
+    "modelSkuName": {
+      "value": "GlobalStandard"
+    },
+    "modelCapacity": {
+      "value": 1
+    },
+    "aiSearchResourceId": {
+      "value": "<existing-basic-search-resource-id>"
+    },
+    "azureStorageAccountResourceId": {
+      "value": "<existing-lrs-storage-resource-id>"
+    },
+    "azureCosmosDBAccountResourceId": {
+      "value": "<existing-serverless-cosmos-resource-id>"
+    },
+    "projectCapHost": {
+      "value": "caphostproj"
+    },
+    "vnetName": {
+      "value": "lab-vnet"
+    },
+    "agentSubnetName": {
+      "value": "agent-subnet"
+    },
+    "peSubnetName": {
+      "value": "pe-subnet"
+    },
+    "existingVnetResourceId": {
+      "value": ""
+    },
+    "vnetAddressPrefix": {
+      "value": "<vnet-cidr>"
+    },
+    "agentSubnetPrefix": {
+      "value": "<agent-subnet-cidr>"
+    },
+    "peSubnetPrefix": {
+      "value": "<pe-subnet-cidr>"
+    },
+    "reuseExistingSubnets": {
+      "value": false
+    },
+    "existingAiFoundryAccountResourceId": {
+      "value": ""
+    },
+    "skipModelDeployment": {
+      "value": false
+    },
+    "enableContainerRegistry": {
+      "value": false
+    },
+    "developerIpCidr": {
+      "value": ""
+    },
+    "createAccountCapabilityHost": {
+      "value": false
+    },
+    "dnsZonesSubscriptionId": {
+      "value": ""
+    }
+  }
+}

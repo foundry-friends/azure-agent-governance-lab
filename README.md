@@ -4,7 +4,15 @@
 
 部内の SE メンバーが、それぞれの Azure 検証環境にガバナンス付きエージェント環境を再現するための手順集です。Microsoft Foundry（旧 Azure AI Foundry）の Foundry Agent Service（Responses API ベースの新ランタイム、2026-03 GA）を使います。**構成 A：Azure 内で完結、Microsoft Agent 365 なし**が対象です。現在は骨組みと未実行のドラフトであり、Azure での構築・動作確認はまだ行っていません。
 
-## 2. 対象読者と前提
+**総所要時間は約70h、Run 0〜3のコアは54h、最小コースは約52h。** 詳細は §6。承認待ち・提供待ちは含みません。
+
+## 2. まず読む
+
+[S0：この手順で作るものと得られること](docs/sections/00_overview.md) で、作るものと確認できる統制を理解してから進みます。[設計判断 D1〜D11](docs/00_design.md) も参照してください。
+
+![サービス全体像](images/01_service_map.png)
+
+## 3. 対象読者と前提
 
 - Azure の RG、RBAC、ネットワークの基本を理解している SE を対象にします。
 - 自分の検証用サブスクリプション、RG を作成する権限、対象 RG の Owner（またはリソース作成権限と User Access Administrator）が必要です。
@@ -12,95 +20,74 @@
 - Entra ID のみで認証し、API キーや接続文字列は使いません。hub-based project は新ポータルに対応しないため、Foundry project を使います。
 - 「要確認」を解消してから実行します。現行 CLI と固定したテンプレートの対応は未検証です。
 
-## 3. 全体像
+## 4. セクション一覧
 
-[Baseline Microsoft Foundry chat reference architecture](https://learn.microsoft.com/en-us/azure/architecture/ai-ml/architecture/baseline-microsoft-foundry-chat) を参照し、学習用に段階を分けます。Baseline 全体を最初から構築する手順ではありません。
+| No | セクション | 1 行説明 |
+|---|---|---|
+| S0 | [この手順で作るものと得られること](docs/sections/00_overview.md) | 成果・図・地図・費用と全体時間 |
+| S1 | [準備と土台](docs/sections/01_foundation.md) | 権限・RG・予算・命名・固定版 |
+| S2 | [ID と権限](docs/sections/02_identity.md) | MI・RBAC・Key Vault・認証 |
+| S3 | [ネットワーク](docs/sections/03_network.md) | BYO VNet・PE・DNS・Firewall |
+| S4 | [データ基盤（Standard setup の BYO）](docs/sections/04_data.md) | 自前 Cosmos・Storage・AI Search |
+| S5 | [Foundry とエージェント](docs/sections/05_foundry_agent.md) | モデル・capability host・prompt agent |
+| S6 | [監視と監査](docs/sections/06_monitoring.md) | 診断ログ・本文トレース・閲覧制御 |
+| S7 | [ゲートウェイと呼び出しアプリ](docs/sections/07_gateway_app.md) | APIM・呼び出しUI・最後にWAF |
+| S8 | [ポリシー・脅威検知・評価](docs/sections/08_policy_defender_eval.md) | Policy・Defender・評価 |
+| S9 | [削除と費用](docs/sections/09_teardown_cost.md) | 削除・残存・翌日の費用 |
+| 付録 A | [作り込み（hosted agent）の分岐](docs/sections/appendix_a_hosted_agent.md) | 任意・骨子のみ |
+| 付録 B | [本番との差（Baseline）](docs/sections/appendix_b_production_diff.md) | SKU と常設範囲の差・骨子のみ |
 
-サービス全体像（青 = Azure 内で完結、オレンジ = Agent 365 が必要、破線 = Preview）:
+## 5. Run 一覧
 
-![サービス全体像](images/01_service_map.png)
+| Run | 名前 | 立てるセクションとパラメータ | 確認する統制（C） | 都度構築の費用（Excel v3 既定値） | 日数 |
+|---|---|---|---|---|---|
+| Run 0 | 準備（机上） | S1 の権限確認・**社内 IP の確定・Entra CA と CAE の確認**・テンプレのコミット固定・パラメータ確定（**41 に networkAcls / publicNetworkAccess の param があるか**）・予算アラート。Excel v3 で上長承認 | — | $0 | 承認待ちと並行 |
+| **Run 1** | 最小構成＋入口の IP 制限 | S1、S2、S3（IP 制限）、S4、S5、S6、S8（Policy 監査 + Defender AI 無料枠）、S9。`enableApim=false`、`allowedIpRanges=<社内 IP>` | C01、C02、C03、C04、C05、C06（監査）、C07、**C08（IP 制限と agent service の到達）**、C10 | 常時分 + 従量分 ≈ 月 $46 | 2 日 |
+| **Run 2** | 送信の絞り込みとゲートウェイ | S1、S2、S3（方式 A）、S4、S5、S6、**S7**、S8（Deny・評価・Red Teaming）、S9。`enableApim=true`。MCP ツールを APIM 経由に統一し、未許可先を呼ぶツールが失敗することを確認 | **C09**、**C08（送信）**、C06（Deny）、C10（quota 403） | + APIM + App Service ≈ 1 日 $2 | 2 日 |
+| Run 3（任意） | Managed VNet（方式 B） | 別 account を CLI（preview）で Managed VNet「承認した送信先のみ」で作成し、FQDN 許可で MCP ツールの可否を確認。戻せないので専用 RG で作って壊す | C08（方式 B） | managed Firewall 課金（単価要確認、8h で $10 前後）| 1 日 |
+| Run 4 | 執筆と公開 | セクション文書の整形、要確認の消し込み、費用実績、規程 OK なら Public 化 | — | — | 1〜2 週 |
+| Run 5 | 部内展開 | 勉強会（Run 1 を SE が再現）、Issue で回収 | — | — | 随時 |
 
-構成 A（Azure 内で完結する標準構成）:
+当日手順：[Run 0](docs/runs/run0_desk.md)／[Run 1](docs/runs/run1_public_minimum.md)／[Run 2](docs/runs/run2_private_network.md)／[Run 3](docs/runs/run3_gateway.md)。Run 4・5は将来の執筆・展開活動で、今回専用文書は作成しません。
 
-![構成 A](images/02_pattern_A_azure_only.png)
+## 6. 総所要時間
 
-Phase 1 は Foundry project と自前 Cosmos DB / Storage / AI Search / Key Vault、監査・権限制御を扱います。Phase 2 では BYO VNet の別環境を新規作成します。Phase 3 の APIM Basic v2 は公開側の別環境で検証します。Phase 1 のアカウントへ VNet injection を後付けすることはできません。[ネットワーク仕様](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/networking-options)
+| Run | 内訳 | 時間 | 分割できるか |
+|---|---|---|---|
+| Run 0 準備（机上） | 会社ルール・権限・社内 IP・CA の確認 2h、テンプレ固定とパラメータ確定のレビュー 2h、組み替えたリポのレビュー 2h | **6h** | 1〜2h 単位で可 |
+| Run 1 最小構成＋IP 制限 | 初回 8h（構築 3・検証 3・執筆 1・削除 1）＋ 再現 8h | **16h** | 1 日は 8h 連続が理想。取れなければ 4h × 2 に分け、間は壊さず置く（1 日置いても数ドル） |
+| Run 2 送信の絞り込みとゲートウェイ | 初回 8h ＋ 再現 8h | **16h** | 同上 |
+| Run 3 Managed VNet（任意） | 1 日 | **8h** | 任意。やらなくても公開できる |
+| Run 4 執筆と公開 | 整形・要確認の消し込み・費用実績・公開規程（Codex 支援、たかしはレビュー中心） | **8〜12h** | 1〜2h 単位で可 |
+| Run 5 部内展開 | 準備 4h ＋ 実施 2h | **6h** | 可 |
+| **合計** | | **約 55〜60h（任意の Run 3 を除く。コア＝Run 0〜2 で 38h）** | |
 
-## 4. フェーズと所要時間
+**最小コース**: 再現日を Run 1 だけにする → 6 + 16 + 8 + 8 + 6 ＝ **約 44h**。公開時に Run 2 のセクションは「再現未確認」と明記。
 
-時間は作業計画上の仮置きです。実測ではなく、権限・クォータ申請や提供待ちを含みません。
+計画値であり実測ではありません。表の約70hは70〜74hの丸め表現です。
 
-| フェーズ | 内容 | 作業時間の目安 | 手順の状態 |
-| --- | --- | --- | --- |
-| Phase 1 | Standard setup、ID、ログ、Policy、Defender、prompt agent | 3〜4 時間 | [ドラフト](docs/10_phase1_minimum.md) |
-| Phase 2 | BYO VNet、Firewall Basic、Private Endpoint | 4〜6 時間 | [見出しと確認項目](docs/20_phase2_private_network.md) |
-| Phase 3 | 公開側 APIM、ガードレール、最後に WAF | 3〜5 時間 | [骨子](docs/30_phase3_gateway_guardrails.md) |
-| 各回の終了 | 削除、残存・課金確認 | 30〜60 分＋非同期削除待ち | [終了手順](docs/90_teardown_and_cost.md) |
+## 7. 費用の目安
 
-## 5. 費用の目安
+| 条件 | 費用 USD |
+|---|---:|
+| 既定値・通常月 | $77.13 / 月 |
+| 既定値・3か月（AI Services初月無料近似） | $223.38 |
+| 既定値・12か月（同上） | $917.53 |
+| CSPM ON（単独切替） | 約 $128 / 月 |
+| AI Search 常時（単独切替） | 約 $170 / 月 |
 
-**Japan East・2026-09-14・USD・730h/月**の入力単価です。提供された調査値を転記した概算で、見積り保証ではありません。実際の契約・SKU・リージョン・課金単位・税・通信量・無料枠は実行前に要確認です。
+2026-09-15 見積り report v2。Japan East、USD、730h/月、原則32h/月の検証、WAF8h/月、CSPM既定OFF、DNS6 zone仮置き。見積り保証ではない。無料枠・契約・SKU・リージョン・税・通信・未計上従量は要確認。公式41の既定構成の料金ではなく、目標SKUを実現した場合の概算です。詳細と初期概算の履歴は [S9](docs/sections/09_teardown_cost.md)。
 
-| サービス | 月額または従量単価 |
-| --- | --- |
-| Firewall Basic / Standard | $288 / $913 |
-| APIM Basic v2 / Standard v2 | $150 / $700 |
-| App Gateway WAF v2 | 約 $392 |
-| AI Search Basic / S1 | $97 / $324 |
-| Cosmos DB 3000 RU/s | $197（Serverless は小規模検証なら数ドルという想定。従量で変動） |
-| Bastion Basic | $139 |
-| Private Endpoint | $7.3 / 個 |
-| App Service B1 | $14 |
-| Log Analytics | $3.34 / GB |
-| gpt-5 mini | 入力 $0.45 / 出力 $3.60、各 1M トークン |
+## 8. 公開時の安全ルール
 
-| シナリオ | 概算月額 | 前提 |
-| --- | --- | --- |
-| 都度構築 | $100〜300 | 週 1 回 × 8h、各回削除。全費目が時間比例するとは限りません |
-| 低コスト常時稼働 | 約 $700（WAF 込み約 $1,100） | Firewall Basic 288＋APIM Basic v2 150＋AI Search Basic 97＋Cosmos Serverless 約 5＋PE 6 個 44＋App Service B1 14＋Defender CSPM 約 51＋ログ 10＋guardrails 8＋モデル 20＋雑費 5 ≈ 692。App Gateway WAF v2 を足すと＋392。実構成の総額は要確認 |
-| Baseline 相当の常時稼働 | 約 $2,900 | 提供された概算。全 SKU・台数の積上げと従量費は要確認 |
-
-低コスト比較は費目の足し算であり、Basic v2 と閉域 Foundry の結合を示すものではありません。Phase 2 と Phase 3 は別環境です。同時稼働させれば両方に課金されます。
-
-Defender for Cloud はサブスクリプション単位の従量課金プランです。CSPM は $0.007 / 課金対象リソース / 時、AI Services は $0.0008 / 1K トークン、30 日無料枠という前提です。対象・適用条件は要確認で、共有サブスクリプションでは他チームにも課金が及びます。[Defender の有効化](https://learn.microsoft.com/en-us/azure/defender-for-cloud/ai-onboarding)
-
-Azure OpenAI に費用のハードリミットはありません。予算アラートは通知であり停止ではありません。Phase 3 の `llm-token-limit` の `token-quota`（超過時 403）でトークン使用量を制限しますが、インフラ費用や迂回経路は別途管理します。[APIM ポリシー](https://learn.microsoft.com/en-us/azure/api-management/llm-token-limit-policy)
-
-## 6. 使い方（Phase 1 まで）
-
-1. [設計判断](docs/00_design.md) と [削除・費用](docs/90_teardown_and_cost.md) を読みます。
-2. [公式テンプレートの固定取得・パラメータ確認](infra/README.md) を行います。
-3. `.env.example` をコピーし、プレースホルダーを自分の環境の値に置き換えます。`.env` は公開しません。
-
-```bash
-cp .env.example .env
-cp infra/params/phase1.example.json infra/params/phase1.local.json
-# infra/README.md に従って main.bicep と照合し、ローカル JSON を完成させます。
-# 要確認を解消後、.env の PHASE1_PARAMETERS_REVIEWED=true を設定します。
-bash scripts/deploy_phase1.sh
-```
-
-4. [Phase 1](docs/10_phase1_minimum.md) の Application Insights、診断設定、Policy、Defender、agent 作成を手動で進めます。展開スクリプトだけでは統制設定は完了しません。
-5. `bash scripts/verify_phase1.sh` と [10 個の検証項目](checks/README.md) で確認します。CLI 骨子は未検証項目を残して終了コード 2 を返します。
-6. 作業後に `bash scripts/teardown.sh --delete '<resource-group-name>'`、続いて `bash scripts/teardown.sh --status` で削除を確認します。
-
-このリポジトリを作成した時点では、上記コマンドは一度も Azure に対して実行していません。
-
-## 7. 安全ルールと免責
-
-個人の検証手順であり、所属組織の公式見解ではありません。運用・セキュリティ要件への適合は各自が確認します。実在の ID、組織名、社内ホスト名、API キー、接続文字列、実データを公開しません。サンプルには架空の入力のみを使います。
+実在の ID、組織名、社内ホスト名、API キー、接続文字列、実データを公開しません。サンプルには架空の入力のみを使います。
 
 モデル向けガードレールは GA ですが、エージェント向け guardrails、Tool call / Tool response 介入点、Task Adherence は Preview です。本番の唯一の防御にしません。hosted agent は存在しない RAI ポリシー ID を指定するとフィルタなしで動く（fail open）ため、存在と適用結果を検証します。[ガードレール](https://learn.microsoft.com/en-us/azure/foundry/guardrails/guardrails-overview)
 
 各回の終了時に削除・残存リソース・翌日以降の費用を確認します。ログや削除済みリソース、サブスクリプションの課金プランは RG 削除と分けて確認します。
 
-## 8. 本番で足すもの
+## 9. 免責
 
-- Microsoft Agent 365：エージェント単位の Defender 脅威検知、Conditional Access for agents、全社台帳。本手順には含めません。2026-07-01 以降に Agent 365 が必要という前提で、ライセンスと適用範囲を確認します。[関連資料](https://learn.microsoft.com/en-us/azure/defender-for-cloud/ai-onboarding)
-- Firewall Standard：Basic から見直し、必要な制御・容量・費用を評価します。
-- APIM Standard v2（または Premium v2）＋ Private Endpoint：閉域 Foundry との結合を設計します。PE だけで経路・名前解決がすべて成立するとは扱いません。[接続要件](https://learn.microsoft.com/en-us/azure/foundry/configuration/enable-ai-api-management-gateway-portal)
-- Microsoft Purview：データ保護の対象、ライセンス、適用範囲は要確認です。
-
-## 9. ライセンス
+個人の検証手順であり、所属組織の公式見解ではありません。運用・セキュリティ要件への適合は各自が確認します。
 
 この手順集は [MIT License](LICENSE) です。公式テンプレートは別途取得し、配布元のライセンスと著作権表示を保持します。[利用表記](NOTICE.md) を参照してください。

@@ -54,7 +54,7 @@ az group delete --subscription "$AZURE_SUBSCRIPTION_ID" \
 for ((attempt=1; attempt<=TEARDOWN_MAX_POLLS; attempt++)); do
   EXISTS="$(rg_exists)"
   if [[ "$EXISTS" == false ]]; then
-    printf '%s\n' 'RG 消失を確認しました。課金停止・完全削除の確認は docs/90 を続けてください。'
+    printf '%s\n' 'RG 消失を確認しました。課金停止・完全削除の確認は docs/sections/09_teardown_cost.md を続けてください。'
     exit 0
   fi
   printf '削除待機中: %s/%s\n' "$attempt" "$TEARDOWN_MAX_POLLS"
@@ -62,5 +62,5 @@ for ((attempt=1; attempt<=TEARDOWN_MAX_POLLS; attempt++)); do
 done
 printf '%s\n' '待機上限です。削除成功とは判定しません。ポータルと --status で再確認してください。' >&2
 # Foundry account は soft-delete 後に purge が必要な場合があります（要確認）。
-# 不可逆の purge は自動実行しません。docs/90 の対象確認手順を参照します。
+# 不可逆の purge は自動実行しません。docs/sections/09_teardown_cost.md の対象確認手順を参照します。
 exit 2
