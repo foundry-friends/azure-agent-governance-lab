@@ -10,6 +10,14 @@
 
 RBAC と監査の検証に使う Key Vault を用意します。この章では Foundry の作成や利用者ロール割当は行いません。
 
+### なぜこの作業が必要か
+
+Key Vault は、パスワードや API キーなどの秘密情報をアプリのコードから分離して保管し、アクセスできる主体を制御するサービスです。一般的な用途は、秘密情報を必要な人やサービスだけに渡し、その利用を追跡できるようにすることです。[Microsoft Learn の概要](https://learn.microsoft.com/ja-jp/azure/key-vault/general/overview)で役割を確認できます。
+
+**今回のラボで用意する理由は、秘密情報を守るリソースの権限設定と監査を学ぶためです。** 本手順では実際のキーや接続文字列を保存せず、独立した RBAC・監査の検証対象として扱います。第5章で必要な主体の権限を確認し、第6章で診断ログの設定につなげます。Vault を作成しただけでは、データへのアクセス制御や監査が検証できたことにはなりません。
+
+この Vault は、現在の構成で Foundry エージェントの必須接続先として使うものではありません。エージェントの接続用シークレットを保管するために必須、という意味ではなく、今回のガバナンス学習の対象として準備します。
+
 ## 2.2. 前提
 
 専用 RG、タグ、社内 IP、Cloud Shell の準備が完了しています。
@@ -87,6 +95,8 @@ Vault を残したまま第3章へ進みます。
 [02_keyvault.bicep](../infra/modules/02_keyvault.bicep) が再現用の設定です。`location`、`prefix`、`allowedIpRanges`、`tags` を GUI の記録と照合します。GUI で作成済みの場合、異なる名前の Vault を追加しないようにします。現在の [main.bicep](../infra/main.bicep) は Key Vault の既存 ID を受け取る構成ではないため、GUI 構築後に一式を重ねて展開しません。実行条件は [IaC の説明](../infra/README.md) に従います。
 
 ### 出典
+
+- 出典: [Key Vault の役割と利用理由](https://learn.microsoft.com/ja-jp/azure/key-vault/general/overview)（取得日 2026-09-15）
 
 - 出典: [Foundry の RBAC](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/rbac-foundry)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
 - 出典: [Key Vault を portal で作成](https://learn.microsoft.com/ja-jp/azure/key-vault/general/quick-create-portal)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）

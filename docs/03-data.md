@@ -10,6 +10,18 @@
 
 Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります。各リソースの認証と IP 制限を設定してから次へ進みます。この章の到達点はデータ基盤の準備です。エージェントの応答確認は第4章で行います。
 
+### なぜこの作業が必要か
+
+エージェントのガバナンスを考えるときは、応答の内容だけでなく、会話やファイルをどこに置き、誰がアクセスできるかも管理する必要があります。このラボでは、自分たちの Azure リソースを接続する Standard setup を目指すため、接続先を先に作って設定を把握します。[Standard setup の説明](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/standard-agent-setup)に基づく構成です。
+
+| リソース | Standard setup での役割 | この章で準備する理由 |
+|---|---|---|
+| Storage | ファイルを保存する場所 | ファイルの保存先とアクセス条件を管理するため |
+| Cosmos DB | 会話などのエージェントの状態を保存する場所 | 状態の保存先とアクセス条件を管理するため |
+| AI Search | ファイル検索で使う検索基盤 | 検索用データの配置先とアクセス条件を管理するため |
+
+この章ではリソースの認証と IP 制限までを揃え、第4章で Foundry に接続します。3リソースが存在することと、エージェントがそれらを利用できることは別なので、接続成功は次章で確かめます。
+
 ## 3.2. 前提
 
 - 第2章が完了し、自分専用の RG が存在します。
@@ -384,6 +396,8 @@ AI Search はサービスを保持している時間の課金に注意します�
 [04_data.bicep](../infra/modules/04_data.bicep) は参考です。現在のモジュールはサービス例外を有効にする設定を含み、この章の例外なしの初期状態とは一致しません。GUI 作成済みの環境に重ねてデプロイしません。モジュールと接続条件の整合が取れるまで、既存のデプロイスクリプトの停止点を維持します。
 
 ### 出典
+
+- 出典: [Standard setup とデータ基盤の役割](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-15）
 
 - 出典: [Storage のネットワーク制限事項](https://learn.microsoft.com/ja-jp/azure/storage/common/storage-network-security-limitations)（取得日 2026-09-15）
 - 出典: [Storage のネットワーク例外の管理](https://learn.microsoft.com/ja-jp/azure/storage/common/storage-network-security-manage-exceptions)（取得日 2026-09-15）
