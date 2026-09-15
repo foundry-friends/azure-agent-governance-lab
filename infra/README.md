@@ -13,7 +13,7 @@ curl --fail --location --output /tmp/foundry-samples.zip 'https://github.com/mic
 実行結果の確認ポイント: PINNED_COMMIT のアーカイブハッシュと照合します。
 
 ```bash
-shasum -a 256 /tmp/foundry-samples.zip
+sha256sum /tmp/foundry-samples.zip
 ```
 実行結果の確認ポイント: 固定版と一致することを確認します。
 
@@ -26,6 +26,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 
 | 担当 | 内容 | 未完了 |
 |---|---|---|
+| 01_budget | RG スコープの予算アラート（実績 50/80/100%・予測 100%・メール通知）。main.bicep からは呼ばず [S1](../docs/01-prerequisites.md) で単独デプロイ | RG 直下配置の実機確認・通知の実受信 |
 | 02_keyvault | RBAC 認可・社内 IP・信頼サービス例外・タグ | 実機 RBAC と到達 |
 | 04_data | Serverless Cosmos・LRS Storage・Basic Search・認証・IP・タグ | agent service の到達 |
 | 41 | BYO ID を受け取り account/project/モデル/MI/接続/host を作成 | GA 適合性・実機動作 |
@@ -79,7 +80,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 
 - Bicep CLI 0.47.16（Homebrew の公式 tap `azure/bicep`）。Azure CLI は未導入。
 - `bicep build infra/main.bicep` は **エラー 0・警告 1** で通過。警告は公式 41 の `modules-standard/add-project-capability-host.bicep` の `capabilityHostKind`（BCP037・型定義側の不足）で、vendor は改変しないため残す。
-- 自前 module 6 本（`02_keyvault`・`03_network_acls`・`04_data`・`06_diagnostics`・`07_gateway_app`・`08_policy_defender`）はいずれも単体で build 通過。`03_network_acls` は for 式を `var` に出す修正を 2026-09-15 に実施。
+- 自前 module 7 本（`01_budget`・`02_keyvault`・`03_network_acls`・`04_data`・`06_diagnostics`・`07_gateway_app`・`08_policy_defender`）はいずれも単体で build 通過。`03_network_acls` は for 式を `var` に出す修正を 2026-09-15 に実施。
 - **通過＝構文と型の整合だけ**。API バージョン・properties の実機での妥当性、権限、クォータは Run 1 で確認する。デプロイはしていない。
 - 再実行:
 

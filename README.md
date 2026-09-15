@@ -127,7 +127,7 @@ Microsoft Foundry の prompt agent を主線として、Azure 内で統制付き
 
 - Azure の RG、RBAC、ネットワークの基本を理解している SE を対象にします。
 - 自分の検証用サブスクリプション、RG を作成する権限、対象 RG の Owner（またはリソース作成権限と User Access Administrator）が必要です。
-- Azure CLI 2.50 以上、Bicep、Bash、Python 3（パラメータのローカル検査用）、Japan East で利用するモデルの提供状況・クォータを確認します。
+- **リソースの作成と設定変更は Azure portal の GUI で行います**（登録する設定を自分の目で確かめるため）。設定の確認・照合に使うコマンドは Azure portal の Azure Cloud Shell（Bash）で実行し、ローカル PC には何も入れません。`infra/` の Bicep は再現用（任意）です。Japan East で利用するモデルの提供状況・クォータを確認します。
 - Entra ID のみで認証し、API キーや接続文字列は使いません。hub-based project は新ポータルに対応しないため、Foundry project を使います。
 - 「要確認」を解消してから実行します。現行 CLI と固定したテンプレートの対応は未検証です。
 
