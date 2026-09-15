@@ -2,7 +2,7 @@
 
 進め方: README の第0〜10章を順番に実施します。第5章の完了条件を満たしてから進めます。
 
-> **Note** 状態: 構成ドラフト・操作の詳細は未確定（Azure 未実行）。構成変更日 2026-09-15。
+> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。診断監査の操作を記載、本文トレースは提供条件により保留。更新日 2026-09-15。
 
 > **補足** この章では環境を削除しません。通常の削除は最後の第10章です。中断して片付ける場合だけ、第10章へ進みます。
 
@@ -18,75 +18,226 @@
 
 ## 6.2. 前提
 
-Log Analytics、Foundry、データ基盤、Key Vault が存在します。本文を読むユーザーと読ませないユーザーを区別します。
+第4章の停止条件を解決し、第5章の設定確認が終わってから実行します。第1章の専用 Log Analytics ワークスペース（以下 LAW）、Foundry、Storage、Cosmos DB、AI Search、Key Vault の ARM ID を用意します。共有の別ワークスペースは変更しません。
+
+### この章で扱う記録の違い
+
+| 種類 | 何を確認するか | 今回の扱い |
+|---|---|---|
+| リソースの診断ログ | サービスの要求・操作・結果 | リソースごとに LAW への送信を設定する |
+| Activity Log | リソースの作成・設定変更・ロール割当等 | Azure portal で専用 RG に絞って確認する |
+| エージェントの本文トレース | プロンプト・応答・ツール呼び出し等 | 下記の提供条件が解決するまで収集を設定しない |
+| ログの閲覧権限 | 誰がログを照会できるか | 通常の監査ログについて設定する。本文だけの分離とは扱わない |
+
+### 本文トレースの停止条件
+
+> **Note** 要確認: 2026-09-15 に取得した公式資料では、Foundry Agent の Entra 認証によるトレース取り込みと、機微な本文の専用テーブルによる保護は Preview です。このラボの「Preview を使わない」条件により、該当する接続・機能登録・保護テーブルの設定は実施しません。C05 は Pending として残します。
+
+| 確認対象 | 公式資料の状態 | この章での判断 |
+|---|---|---|
+| prompt agent のトレース自体 | トレース設定資料では GA | これだけで認証方式や本文保護も GA と判定しない |
+| Foundry Agent → Application Insights の Entra 認証 | 専用の設定資料が Preview | Foundry のトレース接続を作成しない |
+| AppGenAIContent への機微な本文の分離・保護 | 専用の設定資料が Preview | 機能フラグや保護テーブルを有効化しない |
+| 独自アプリからの Entra 認証付きテレメトリ | Application Insights 一般の認証資料がある | Foundry サーバー側の対応を代替して証明するものではない |
+
+[Foundry のトレース設定](https://learn.microsoft.com/en-us/azure/foundry/observability/how-to/trace-agent-setup) では Application Insights 接続後にサーバー側トレースが自動で始まると説明されています。確認のつもりで [接続] を確定しないでください。未接続の場合、この章では Application Insights の新規作成も保留します。既存のリソース・接続があれば、状態を非公開に記録し、収集範囲を確認するまで新たな入力を送信しません。
+
+接続文字列の有無だけでは Entra 認証の使用を判定できません。一般の SDK 設定と Foundry の接続方式を区別し、送信主体・認証・本文収集・閲覧制御が確定してから手順を補完します。診断ログの設定を先に進めても、C05 が完了したことにはなりません。
+
+### 作業前チェック
+
+- [ ] 対象が自分の専用 RG・LAW である。
+- [ ] 構築担当に対象リソースの診断設定、LAW の設定変更、必要なロール割当の権限がある。
+- [ ] 監査ログを読む試験ユーザーと、読ませない試験ユーザーを選び、既存・グループ・継承の権限を確認した。
+- [ ] 作業時刻、変更前の診断設定、保持設定、アクセス制御モードを非公開に記録した。
+- [ ] 本文トレースの停止条件を確認し、試験には合成データだけを使う。
 
 ## 6.3. 設定
 
-### Application Insights を接続する
+### 1. 通常の監査ログの閲覧範囲を決める
 
-> **Note** 要確認: 作成ウィザードの GUI 手順と入力項目を確定する必要があります。[06_diagnostics.bicep](../infra/modules/06_diagnostics.bicep) は任意の再現資料です。
+第5章で開発者に付けた account の Reader と、LAW 全体のログを読む権限は別です。LAW のアクセス制御モードによっては、リソース側の閲覧権限でそのリソースのログを読めるため、モードも明示します。
 
-1. 第1章の `LOG_ANALYTICS_RESOURCE_ID` を確認します。
-2. Azure portal で既存 Log Analytics に接続する Application Insights を準備します。
-3. Foundry project の [監視] でトレース接続を確認します。
-4. Entra ID による送信経路を確認できた場合だけ本文収集を設定します。
+1. Azure portal で第1章の LAW を開きます。
+2. [概要] で現在のアクセス制御モードを確認します。
+3. [プロパティ] を開きます。
+4. アクセス制御モードを [ワークスペースのアクセス許可が必要] に設定します。
+5. 変更を保存します。
+6. LAW の [アクセス制御 (IAM)] を開きます。
+7. [追加] → [ロールの割り当ての追加] を選びます。
+8. Log Analytics Reader を選びます。
+9. [メンバー] で監査閲覧用の試験ユーザーを選びます。
+10. [レビューと割り当て] で LAW スコープであることを確認して割り当てます。
 
-> **Note** 要確認: 41 の App Insights 接続は ApiKey / ConnectionString のため使いません。Entra ID のみの接続・SDK・必要ロール・本文収集方法は（初回で記入）です。接続文字列を貼る方法に切り替えず、未解決なら C05 を Pending にします。
+| 主体 | 設定・留意点 |
+|---|---|
+| 構築担当 | 既存の管理権限を維持。閲覧拒否の比較対象にはしない |
+| 監査閲覧用ユーザー | 専用 LAW の Log Analytics Reader。通常は LAW の複数テーブルを読める |
+| 閲覧させないユーザー | LAW の読み取りを許可する直接・グループ・上位の割当がない主体 |
+| project の MI | ログを生成するサービスであることを理由に LAW の Reader を追加しない |
 
-### 診断ログを設定する
+この設定は本文だけを隠すものではありません。将来本文を LAW に取り込む場合、既存の閲覧権限が本文にも及ぶ可能性を再評価します。閲覧制御のために全員へ Reader を付けたり、既存の組織権限を削除したりしません。
 
-1. Foundry の診断カテゴリを列挙します。
+### 2. 診断カテゴリを確認する
+
+構築担当の Azure Cloud Shell（Bash）で、対象の ARM ID を指定します。各リソースについて同じ照会を行います。
 
 ```bash
-az monitor diagnostic-settings categories list --subscription "$AZURE_SUBSCRIPTION_ID" --resource "$FOUNDRY_ACCOUNT_RESOURCE_ID" --output table
+az monitor diagnostic-settings categories list --resource "<target-resource-id>" --output json
 ```
-実行結果の確認ポイント: 実在カテゴリとログ種別を確認します。
+実行結果の確認ポイント: 対象で提供されるログのカテゴリ名とメトリックを区別し、下表の候補が実際に存在することを確認します。
 
-2. 各リソースの [診断設定] を開きます。
-3. 下表の対象で実在するカテゴリを選択します。
-4. 送信先に 第1章の Log Analytics を指定します。
-5. [保存] を選択します。
-6. 合成操作を発生させます。
-7. [ログ] で対応レコードを確認します。
+| 対象 | 選択するカテゴリの候補 | LAW の保存先 |
+|---|---|---|
+| Foundry account | Audit / RequestResponse | AzureDiagnostics |
+| Cosmos DB account | DataPlaneRequests / ControlPlaneRequests | リソース固有を選択した場合 CDBDataPlaneRequests / CDBControlPlaneRequests |
+| AI Search service | OperationLogs | AzureDiagnostics |
+| Key Vault | AuditEvent | AzureDiagnostics |
+| Storage の Blob service | StorageRead / StorageWrite / StorageDelete | リソース固有を選択した場合 StorageBlobLogs |
+
+Storage は account 本体と Blob service のスコープが異なります。Blob service の ARM ID は、記録済みの Storage account の ID に `/blobServices/default` を付けたものです。表示されたカテゴリを確認してから設定します。API のカテゴリ名と画面の日本語訳が異なる場合は対応を記録します。
+
+今回使わないサービスのカテゴリ、有償の集約カテゴリ、全カテゴリの一括指定、AllMetrics は既定で選びません。カテゴリ名だけで「本文が入らない」「すべての拒否が記録される」と保証せず、合成操作の実レコードを確認します。
+
+### 3. リソースごとに LAW への送信を設定する
+
+1. Azure portal で対象リソースを開きます。
+2. [監視] の [診断設定] を開きます。
+3. Storage の場合は Blob service を選びます。
+4. 既存設定の送信先とカテゴリを確認します。
+5. 同じ送信が未設定の場合に [診断設定の追加] を選びます。
+6. 診断設定名を入力します。
+7. [ログ] で手順2で確認したカテゴリを選びます。
+8. [宛先の詳細] で [Log Analytics ワークスペースへの送信] を選びます。
+9. 第1章の LAW を選びます。
+10. コレクションモードを選べる場合は [リソース固有] を選びます。
+11. [保存] を選びます。
+12. 設定を再度開いて対象・カテゴリ・送信先を確認します。
 
 | 項目 | 値 |
 |---|---|
-| 対象 | Foundry・Cosmos・AI Search・Key Vault（APIM は第7章で作成時に追加） |
-| カテゴリ | 対象ごとに列挙した監査・操作・拒否ログだけ |
-| 保持 | 30 日（LAW と各テーブルを確認） |
-| 本文 | トレースの `AppGenAIContent` と閲覧権限を別確認 |
+| 診断設定名 | `diag-agentgov-law`（各リソース内で識別できる名前） |
+| 送信先 | 第1章の専用 LAW |
+| カテゴリ | 手順2のうち、対象で提供されているもの |
+| コレクションモード | 選択可能ならリソース固有。選択できない場合は既定の保存先を記録 |
+| Storage / Event Hubs への追加送信 | この章では設定しない |
 
-8. [アクティビティ ログ] で構成変更の記録を確認します。
-9. Foundry の Purview Audit トグルの利用条件を確認します。
+```bash
+az monitor diagnostic-settings list --resource "<target-resource-id>" --output json
+```
+実行結果の確認ポイント: `workspaceId`、有効なログカテゴリ、コレクションモードを保存前の記録と照合し、重複送信がないことを確認します。
 
-> **Note** 要確認: ネットワーク拒否ログの所在、反映時間、Purview Audit の GA・権限・利用条件は（初回で記入）です。有償 Purview 機能は追加しません。
+APIM と呼び出しアプリはまだ存在しません。作成する第7章で診断設定を追加するので、この章へ戻る必要はありません。Application Insights のワークスペース接続は、このリソース診断設定とは別です。
 
-> **補足** 診断ログにはプロンプト本文があることを期待しません。[機微なトレース内容](https://learn.microsoft.com/en-us/azure/foundry/observability/how-to/traces-sensitive-content) とモデル呼び出しの記録を区別します。
+### 4. 合成操作を行い、ログ到着を確認する
+
+1. 操作開始時刻を記録します。
+2. 社内 PC のブラウザから Foundry の作成済みエージェントに、第4章と同じ合成入力を1回送ります。
+3. Key Vault の [シークレット] の一覧を開きます。
+4. 一覧の成功または拒否を記録します。
+5. LAW の [ログ] を開きます。
+6. クエリ画面で時間範囲と LAW スコープを確認します。
+7. 下記のクエリで対象リソースの到着件数を確認します。
+
+Key Vault の値は開かず、新しいシークレットも作りません。一覧の拒否でも監査の観測対象になりますが、ポータルで拒否されたことだけではログ到着の証明になりません。拒否した層と実レコードを照合します。
+
+```kusto
+table("<log-table-name>")
+| where TimeGenerated > ago(2h)
+| where _ResourceId =~ "<target-resource-id>"
+| summarize Records=count(), FirstSeen=min(TimeGenerated), LastSeen=max(TimeGenerated)
+```
+実行結果の確認ポイント: `<log-table-name>` を実在する保存先テーブル名に置き換え、件数が0より大きく、時刻が今回の操作に対応することを確認します。
+
+```kusto
+table("<log-table-name>")
+| where TimeGenerated > ago(2h)
+| where _ResourceId =~ "<target-resource-id>"
+| project TimeGenerated, OperationName
+| order by TimeGenerated desc
+| take 20
+```
+実行結果の確認ポイント: 対象テーブルに `OperationName` があることをスキーマで確認し、今回の操作に対応する行を特定します。
+
+詳細画面で結果コードと主体・相関情報を確認できる場合は、非公開に記録します。列名はテーブルごとに異なります。プロンプト、シークレット、トークンを検索条件や公開証跡に貼り付けません。
+
+> **Note** 要確認: ログの到着、操作名、結果列、ネットワーク拒否を記録する層は実機で照合します。診断設定の作成後、データ送信開始には時間がかかり、最初のレコードでテーブルが作成されます。テーブル未作成・0件を成功と扱いません。
+
+テキストのみの応答で Search や Storage の操作ログが出るとは限りません。ログを出すためだけに未設計のツールやデータアクセス権を追加せず、未発生の対象は Pending と理由を記録します。Cosmos DB についても、応答成功から到着を推測せず実レコードを確認します。
+
+### 5. 30日の保持設定を照合する
+
+1. LAW の [使用とコストの見積もり] を開きます。
+2. [データ保持] でワークスペースの既定値が30日であることを確認します。
+3. LAW の [テーブル] を開きます。
+4. 今回レコードが到着したテーブルのメニューから [テーブルの管理] を開きます。
+5. Analytics のデータ保持期間を30日に設定します。
+6. 合計保持期間も30日に設定します。
+7. 保存後に両方の値を確認します。
+
+ワークスペースの既定値だけでは、テーブル個別の上書きは確認できません。未作成のテーブルは設定済みとせず、そのログが初めて届く工程で保持値を確認します。既定90日のテーブルもあるため、一律に30日だと推測しません。
+
+30日という設定値と、30日経過時の即時・完全削除は同じではありません。公式資料では30日設定でも31日保持される場合や、保持短縮時の削除猶予が説明されています。このラボは設定値の確認であり、厳密な削除期限の保証ではありません。
+
+### 6. 構成変更を Activity Log で確認する
+
+1. 専用 RG の [アクティビティ ログ] を開きます。
+2. 対象を今回の RG、時間範囲を作業開始前から現在までに絞ります。
+3. 今回の診断設定または権限設定の変更イベントを選びます。
+4. 操作、対象、時刻、結果、実行主体を確認します。
+5. 診断ログとは別の証跡として非公開に記録します。
+
+Activity Log は自動収集され、標準の保持は90日です。LAW の30日設定はこの標準保持を変更しません。この章では共有サブスクリプション全体のエクスポート設定を追加せず、LAW に `AzureActivity` が届くことも前提にしません。通常の読み取り操作やチャット本文を Activity Log に期待しません。
+
+### 7. 通常ログの閲覧を確認する
+
+1. 監査閲覧用ユーザーでサインインします。
+2. 同じ LAW の [ログ] から手順4の件数クエリを実行します。
+3. 対応するレコードの存在を確認します。
+4. 閲覧させないユーザーに切り替えます。
+5. 同じ LAW へのアクセス・照会結果を記録します。
+
+0件という結果だけでは閲覧拒否の証明になりません。権限エラー、照会スコープ、継承されたロール、既存の条件付きアクセスによるサインイン拒否を区別します。この確認を行っても、本文の保護・閲覧拒否を試した C05 の合格とはしません。
 
 ## 6.4. 完了条件
 
-C04: 必要な診断ログの到着を確認します。C05: 合成本文の到着、閲覧許可／拒否、30 日保持を確認します。project MI に広い本文閲覧権限を付与する場合は実効スコープも確認します。
+| 確認 | この章で残す結果 |
+|---|---|
+| 診断設定 | 対象・カテゴリ・送信先・保存方式を照合済み |
+| C04 のログ到着 | 到着した対象ごとに操作とレコードを対応付ける。未発生・未到着は Pending |
+| 保持 | LAW と実在する対象テーブルの保持値。未作成のテーブルは未確認 |
+| 構成変更の監査 | Activity Log の対応イベント |
+| 通常ログの閲覧 | 許可ユーザーと拒否ユーザーの結果・拒否した層 |
+| C05 | 本文収集・本文だけの閲覧制御は未実施。提供条件を記録し Pending |
 
 ```bash
 bash scripts/verify.sh --section 6
 ```
-実行結果の確認ポイント: 設定収集または案内のみで、未完了は終了コード 2 です。
+実行結果の確認ポイント: 第1章で準備した非公開の環境変数と対象を照合して使い、案内と終了コード2を試験合格と解釈しないことを確認します。
 
-[確認項目](../checks/README.md) ごとに実施日・Run・入力・期待結果・実結果・Pass / Fail / Pending を非公開の `evidence/` に記録します。未実施は Pending です。
-
-この章の合成操作でログの到着を確認します。第8章では新たな統制試験を行い、その試験のログを確認します。過去の章の未実施作業をやり直す流れではありません。
+この補助スクリプトはログ到着や閲覧拒否を自動判定しません。対象・操作時刻・保存先・クエリ・結果・Pass / Fail / Pending・未解決点を非公開の `evidence/` に記録します。
 
 ## 6.5. うまくいかない場合
 
-（初回で記入）
+| 症状 | 切り分けと対応 |
+|---|---|
+| カテゴリが表示されない | resource ID と子リソースの指定、対象の対応カテゴリ、照会権限を確認する |
+| LAW にテーブルがない | 設定の送信先、保存方式、設定後に対象操作を行ったか、反映待ちを確認する |
+| 件数はあるが試験と対応しない | 時刻・対象 ID・操作を絞る。過去のレコードで合格にしない |
+| Search / Storage にログがない | そのサービスを使う操作が実際に発生したか確認する。チャットだけで到着を期待しない |
+| 監査ユーザーが読めない | LAW のモード、ロールとスコープ、継承・反映、照会対象を確認する |
+| 閲覧させないユーザーが読める | グループ・上位スコープ・リソース経由の権限を確認する。既存の組織権限は削除しない |
+| 本文が見つからない | 今回は収集を保留しているため、本文収集の完了条件を満たさない。診断ログへ置き換えて合格にしない |
 
-1. 診断カテゴリ・送信先・反映待ちを確認します。
-2. 本文がなければトレース収集と Entra ID 経路を確認します。
-3. 本文閲覧権限を広げて解決したことにせず、必要主体だけに限定します。
+設定変更前の記録と照合して、誤った送信先やカテゴリは今回の診断設定だけを修正します。誤った閲覧権限は今回追加した割当だけを戻し、正しい設定を再確認します。IP 制限解除やキー認証への切替は行いません。
+
+本文トレースの再開には、Foundry の Entra 取り込みと本文保護の GA 対応、送信元と通信経路、閲覧者、保存先、保持値を確認し、手順を補完する必要があります。確認した公式資料の日付と対象構成への適用根拠を記録します。Purview Audit はこの章の必須工程にせず、GA・権限・ライセンス条件を未確認のまま有効化しません。
 
 ## 6.6. 次の操作
 
-監視設定を維持して第7章へ進みます。本文トレースの経路が未確定なら C05 は Pending と記録します。
+通常の監査設定と到着確認の結果を記録して第7章へ進みます。設定不備で基本の監査ログを取得できない場合は修正するまで保留します。まだ発生していないサービス操作と本文トレースは Pending のまま明示して引き継ぎます。
+
+第7章では新しく作る APIM・アプリの監査を追加します。第8章では新たな統制試験の時刻に対応するログを確認します。C04 / C05 全体をこの時点で一括 Pass にしません。
 
 ## 6.7. 費用
 
@@ -104,7 +255,26 @@ bash scripts/verify.sh --section 6
 
 ### 出典
 
-- 出典: [機微なトレース内容](https://learn.microsoft.com/en-us/azure/foundry/observability/how-to/traces-sensitive-content)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
+- 出典: [Blob Storage の監視](https://learn.microsoft.com/ja-jp/azure/storage/blobs/monitor-blob-storage)（取得日 2026-09-15）
+- 出典: [KQL の table 関数](https://learn.microsoft.com/ja-jp/kusto/query/table-function?view=microsoft-fabric)（取得日 2026-09-15）
+- 出典: [AzureDiagnostics の列](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/tables/azurediagnostics)（取得日 2026-09-15）
+- 出典: [CDBDataPlaneRequests の列](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/tables/cdbdataplanerequests)（取得日 2026-09-15）
+- 出典: [Azure Monitor の診断設定](https://learn.microsoft.com/ja-jp/azure/azure-monitor/platform/diagnostic-settings)（取得日 2026-09-15）
+- 出典: [Log Analytics のアクセス管理](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/manage-access)（取得日 2026-09-15）
+- 出典: [Azure portal のロール割当](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/role-assignments-portal)（取得日 2026-09-15）
+- 出典: [ログの保持設定](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/data-retention-configure)（取得日 2026-09-15）
+- 出典: [Activity Log](https://learn.microsoft.com/ja-jp/azure/azure-monitor/platform/activity-log)（取得日 2026-09-15）
+- 出典: [Foundry のログカテゴリ](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/supported-logs/microsoft-cognitiveservices-accounts-logs)（取得日 2026-09-15）
+- 出典: [Cosmos DB のログカテゴリ](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/supported-logs/microsoft-documentdb-databaseaccounts-logs)（取得日 2026-09-15）
+- 出典: [AI Search のログカテゴリ](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/supported-logs/microsoft-search-searchservices-logs)（取得日 2026-09-15）
+- 出典: [Key Vault のログカテゴリ](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/supported-logs/microsoft-keyvault-vaults-logs)（取得日 2026-09-15）
+- 出典: [Blob service のログカテゴリ](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/supported-logs/microsoft-storage-storageaccounts-blobservices-logs)（取得日 2026-09-15）
+- 出典: [診断カテゴリの CLI](https://learn.microsoft.com/en-us/cli/azure/monitor/diagnostic-settings/categories)（取得日 2026-09-15）
+- 出典: [診断設定の CLI](https://learn.microsoft.com/en-us/cli/azure/monitor/diagnostic-settings)（取得日 2026-09-15）
+- 出典: [Foundry のトレース設定](https://learn.microsoft.com/en-us/azure/foundry/observability/how-to/trace-agent-setup)（取得日 2026-09-15）
+- 出典: [Foundry の Entra トレース取り込み（Preview・実施対象外）](https://learn.microsoft.com/en-us/azure/foundry/observability/how-to/trace-ingestion-entra-authentication)（取得日 2026-09-15）
+- 出典: [機微な本文の保護（Preview・実施対象外）](https://learn.microsoft.com/en-us/azure/foundry/observability/how-to/traces-sensitive-content)（取得日 2026-09-15）
+- 出典: [Application Insights の Entra 認証](https://learn.microsoft.com/ja-jp/azure/azure-monitor/app/azure-ad-authentication)（取得日 2026-09-15）
 
 ---
 
