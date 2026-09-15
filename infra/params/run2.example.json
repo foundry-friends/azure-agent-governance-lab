@@ -2,12 +2,15 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "metadata": {
-    "_comment": "要確認：公式15向け実param名。ラッパ41には渡さない。deploy.shはRun 2の分岐未実装で停止。VNet背後tools非対応・Monitor PE/DNS追加・App Insights認証と費用の差をレビュー。ACRは本編対象外としてfalse。",
+    "_comment": "要確認：自前ラッパ向け。BYO は data outputs を 41 に渡します。IP 配列は .env と一致させます。S5 後追い・S6 接続・S7 経路・S8 定義・GA 適合性が未解決。監視/Policy の false は保留であり目標達成ではありません。",
     "reviewRequired": true
   },
   "parameters": {
     "location": {
       "value": "japaneast"
+    },
+    "prefix": {
+      "value": "lab"
     },
     "aiServices": {
       "value": "lab"
@@ -36,59 +39,55 @@
     "modelCapacity": {
       "value": 1
     },
-    "aiSearchResourceId": {
-      "value": "<existing-basic-search-resource-id>"
-    },
-    "azureStorageAccountResourceId": {
-      "value": "<existing-lrs-storage-resource-id>"
-    },
-    "azureCosmosDBAccountResourceId": {
-      "value": "<existing-serverless-cosmos-resource-id>"
-    },
     "projectCapHost": {
       "value": "caphostproj"
     },
-    "vnetName": {
-      "value": "lab-vnet"
+    "accountCapHost": {
+      "value": "caphostacc"
     },
-    "agentSubnetName": {
-      "value": "agent-subnet"
-    },
-    "peSubnetName": {
-      "value": "pe-subnet"
-    },
-    "existingVnetResourceId": {
-      "value": ""
-    },
-    "vnetAddressPrefix": {
-      "value": "<vnet-cidr>"
-    },
-    "agentSubnetPrefix": {
-      "value": "<agent-subnet-cidr>"
-    },
-    "peSubnetPrefix": {
-      "value": "<pe-subnet-cidr>"
-    },
-    "reuseExistingSubnets": {
+    "deployApplicationInsights": {
       "value": false
     },
-    "existingAiFoundryAccountResourceId": {
-      "value": ""
+    "deploymentTimestamp": {
+      "value": "20260915000000"
     },
-    "skipModelDeployment": {
+    "allowedIpRanges": {
+      "value": [
+        "<corporate-public-ipv4-cidr>"
+      ]
+    },
+    "allowedIpAddressRanges": {
+      "value": [
+        {
+          "from": "<first-ipv4-address>",
+          "to": "<last-ipv4-address>"
+        }
+      ]
+    },
+    "enableApim": {
+      "value": true
+    },
+    "enableDiagnostics": {
       "value": false
     },
-    "enableContainerRegistry": {
+    "enablePolicyDefender": {
       "value": false
     },
-    "developerIpCidr": {
-      "value": ""
+    "policyEffect": {
+      "value": "Deny"
     },
-    "createAccountCapabilityHost": {
-      "value": false
+    "tags": {
+      "value": {
+        "purpose": "agent-governance-lab",
+        "run": "2",
+        "deleteAfter": "<deletion-date>"
+      }
     },
-    "dnsZonesSubscriptionId": {
-      "value": ""
+    "publisherEmail": {
+      "value": "<publisher-email>"
+    },
+    "publisherName": {
+      "value": "<publisher-display-name>"
     }
   }
 }

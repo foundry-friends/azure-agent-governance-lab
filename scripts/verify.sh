@@ -8,7 +8,7 @@ fail() { printf '%s\n' "$*" >&2; exit 1; }
 SECTION="$2"
 case "$SECTION" in
   1|9) printf '%s\n' 'Pending C10: 予算通知・削除後残存・費用反映は checks/README.md で確認。'; exit 2 ;;
-  3) printf '%s\n' 'Pending C08: 閉域/公開の同一権限呼出し・DNS・出口・例外は要確認。'; exit 2 ;;
+  3) printf '%s\n' 'Pending C08: 許可 IP 成功／許可外 IP 拒否・agent service の BYO 到達・未許可 MCP 失敗／APIM 許可先成功は要確認。'; exit 2 ;;
   7) printf '%s\n' 'Pending C09: quota 403・経由ログ・ガードレール・fail openの適用範囲は要確認。'; exit 2 ;;
 esac
 [[ -f .env ]] || fail '.env がありません。.env.example をコピーしてください。'

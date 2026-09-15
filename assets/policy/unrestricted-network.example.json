@@ -1,0 +1,40 @@
+{
+  "properties": {
+    "displayName": "Foundry の無制限公開を監査または拒否する例",
+    "mode": "All",
+    "metadata": {
+      "description": "未検証。alias と対象 API を確認します。Foundry のみであり他リソースは対象外です。"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "allowedValues": [
+          "Audit",
+          "Deny"
+        ],
+        "defaultValue": "Audit"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.CognitiveServices/accounts"
+          },
+          {
+            "field": "Microsoft.CognitiveServices/accounts/publicNetworkAccess",
+            "notEquals": "Disabled"
+          },
+          {
+            "field": "Microsoft.CognitiveServices/accounts/networkAcls.defaultAction",
+            "notEquals": "Deny"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

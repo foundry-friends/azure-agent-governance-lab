@@ -1,58 +1,76 @@
-# 公式テンプレートの利用方法
+# 公式テンプレートと自前 Bicep の利用方法
 
-## 対象と固定方法
+## 対象と固定版
 
-[公式 Bicep テンプレート集](https://github.com/microsoft-foundry/foundry-samples/tree/main/infrastructure/infrastructure-setup-bicep) の `41-standard-agent-setup` を Run 1、`15-private-network-standard-agent-setup` を Run 2 に使います。`16-private-network-standard-agent-apim-setup` は閉域 APIM 統合の参考です。Run 3 の公開側 Basic v2 環境に 16 をそのまま展開する手順ではありません。
+Run 1 / Run 2 は固定版の 41-standard-agent-setup を自前 main.bicep から呼びます。15 は使いません。[PINNED_COMMIT](PINNED_COMMIT.md) と [41 の調査](params/41_parameters.md) を参照します。vendor は変更していません。
 
-再現性のため、GitHub のコミット画面から選んだ **40 桁の完全なコミット SHA** を `.env` の `FOUNDRY_SAMPLES_COMMIT` に保存します。Run 0で採用コミットを固定しました。元のコミット未選定の要確認は机上解消し、[PINNED_COMMIT](PINNED_COMMIT.md)にSHAとUTC取得日時を記録しています。以下は同じ版を再取得する例です。git 操作は不要です。取得例には Bash、curl、unzip が必要です。
+1. 固定版の相対依存と LICENSE があることを確認します。
+2. 取得済みの vendor がない場合だけ固定 SHA のアーカイブを取得します。
 
 ```bash
-# リポジトリ直下で実行します。信頼できる .env だけを読み込みます。
-set -euo pipefail
-source .env
-# 採用版を固定します。
-FOUNDRY_SAMPLES_COMMIT='58e4127567f7e9afcf0145d874df890284ca5faf'
-[[ "$FOUNDRY_SAMPLES_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 1
-mkdir -p infra/vendor
-curl --fail --location --output infra/vendor/foundry-samples.zip \
-  "https://github.com/microsoft-foundry/foundry-samples/archive/${FOUNDRY_SAMPLES_COMMIT}.zip"
-unzip infra/vendor/foundry-samples.zip -d infra/vendor
-# 展開先: infra/vendor/foundry-samples-<full-40-character-commit-sha>/
+curl --fail --location --output /tmp/foundry-samples.zip 'https://github.com/microsoft-foundry/foundry-samples/archive/58e4127567f7e9afcf0145d874df890284ca5faf.zip'
 ```
+実行結果の確認ポイント: PINNED_COMMIT のアーカイブハッシュと照合します。
 
-取得済みの場合は再展開せず内容を照合します。LICENSE と依存 module も保持します。固定 SHA は追跡対象の PINNED_COMMIT に記録済みです。実機検証した日付・CLI/Bicep バージョンは実行時に付記してください。ダウンロード先は公開対象外です。アーカイブのハッシュを控え、取得物の改変も管理します。
+```bash
+shasum -a 256 /tmp/foundry-samples.zip
+```
+実行結果の確認ポイント: 固定版と一致することを確認します。
+
+```bash
+unzip /tmp/foundry-samples.zip -d infra/vendor
+```
+実行結果の確認ポイント: 既存取得物を上書きせず、相対依存と LICENSE を保持します。
+
+## モジュールの責任分担
+
+| 担当 | 内容 | 未完了 |
+|---|---|---|
+| 02_keyvault | RBAC 認可・社内 IP・信頼サービス例外・タグ | 実機 RBAC と到達 |
+| 04_data | Serverless Cosmos・LRS Storage・Basic Search・認証・IP・タグ | agent service の到達 |
+| 41 | BYO ID を受け取り account/project/モデル/MI/接続/host を作成 | GA 適合性・実機動作 |
+| 03_network_acls | existing account 参照と更新目標 | S5 の後追いコマンド実行 |
+| 06_diagnostics | 既存 LAW に接続する App Insights | Foundry 接続・診断設定・本文 |
+| 07_gateway_app | Basic v2・B1・IP 制限 | OBO・JWT・許可済みツール・quota・アプリ配布 |
+| 08_policy_defender | effect を指定した Policy 割当 | 定義 alias と型別対応・Defender は手動 |
+
+`existing` は更新操作ではありません。03 モジュールを配置しただけで C08 が完了したと扱わず、[S5](../docs/12-foundry-agent.md) の明示的な更新を行います。41 にトップレベル outputs はありません。account 名の式を固定ソースから合わせていますが、実物との一致を確認します。ラッパは実 ID や接続文字列を一括出力しません。
 
 ## パラメータを確定する
 
-`params/run1.example.json`（Run 2は15向け、Run 3は自前ラッパ向け） は **デプロイ可能な完成例ではありません**。JSON 標準にはコメントがないため、コメント相当を `metadata._comment` に置いています（旧例の `metadata.parameterNotes` の論点は41_parameters.mdへ移行）。`location` は実在を確認しました。旧 `cosmosDbCapacityMode` / `aiSearchSku` は仮名だったため削除し、実在のBYO ID paramに置き換えました。
+1. Run に合う example.json を対応する local.json にコピーします。
+2. main.bicep と項目を照合します。
+3. `.env` と JSON の `allowedIpRanges` を一致させます。
+4. Run 2 は `allowedIpAddressRanges` に CIDR ごとの開始・終了アドレスを設定します。
+5. すべての placeholder と metadata を解消します。
+6. `.env` の該当 `RUNN_PARAMETERS_REVIEWED` を true にします。
 
-1. `41-standard-agent-setup/main.bicep` とその依存 module、README を読みます。ファイルの存在・配置の要確認は今回解消しました。
-2. 各 `param` の型、default、allowed、必須性と deployment scope を一覧にします。RG scope の要確認は今回ソースで解消しました。異なる場合はスクリプトを修正してから使います。
-3. Japan East / Cosmos DB Serverless / AI Search Basic を実現する実パラメータへ置き換えます。非対応なら黙って既定 SKU を使わず、公式が案内する BYO リソース方式を調べます（要確認）。
-4. Foundry project、新ランタイム対応、モデル名・バージョン・クォータ・容量、capability host、Entra ID / managed identity 接続、ローカル認証無効化を照合します。テンプレートがキー・接続文字列を要求する方式なら、そのまま使わず Entra ID 方式を確定します（要確認）。Key Vault にキーを保存する方式で代用しません。
-5. Application Insights / Log Analytics の有無、出力名、30 日保持の設定方法を照合します。接続文字列を出力やローカル設定へコピーしません。ログの Entra ID 経路の設定は要確認です。
-6. コピーした `run1.local.json` で全「要確認」を解消し、全 placeholder と仮名を除き、`metadata` を削除します。必要な非秘密パラメータだけを実名で記載します。
-7. 内容をレビューして 該当Runの `.env` 設定（`RUN1_PARAMETERS_REVIEWED=true` 等）を更新します。
+| 項目 | 値 |
+|---|---|
+| Run 1 | `enableApim=false` |
+| Run 2 | `enableApim=true` |
+| 社内 IP | 非空の公開 IPv4 CIDR、全許可は禁止 |
+| APIM IP 範囲 | `from` / `to`（CIDR との一致をスクリプトで検査） |
+| 41 のデータ ID | data module の outputs を自動で渡す |
+| `deployApplicationInsights` | 必ず false、S6 で後追い |
+| 監視・Policy | false は保留。必要パラメータと手順を確定してから有効化 |
 
-## 展開スクリプトの範囲と再実行
+監視を有効化する場合は S1 の LAW ID を `workspaceResourceId` に指定します。Policy を有効化する場合は定義 ID・effect・parameters を指定します。単一の割当骨子で全対象型を覆ったことにはなりません。
 
-完成後の `deploy.sh --run 1` はローカルファイルを検査してから、既存ログインとテナントを確認し、対象サブスクリプションを全コマンドで明示し、RG 作成、validate、what-if、Incremental 展開を行います。変更対象の事前レビューは手順側で行ってください。ログインしていなければ自動ログインせず停止します。
+## 固定停止点と未検証事項
 
-同じ RG・deployment 名・固定 SHA・パラメータ（特にdeploymentTimestamp）で再実行する設計です。ラッパは実行のたびに時刻や乱数を追加しません。公式41は固定したdeploymentTimestampとRG IDからsuffixを作ります。ただし capability host の変更はできず、公式テンプレート側の冪等性は未検証です。構成の変更が必要な場合は更新できると仮定せず、別 RG / 新アカウントを検討します。既存の共有 RG は対象にしません。
+**未コンパイル・Azure 未実行です。** この環境には az / bicep がありません。deploy.sh はローカル入力検査後に固定停止し、レビュー済みフラグだけでは Azure へ送信しません。
 
-トップレベルoutputsは0件です。将来出力を追加しても、スクリプトは deployment の状態と **出力項目名だけ**を表示します。resource ID 等の必要な値はポータルで照合し `.env` に保存します。すべての出力をログへ書き出すことはしません。
+> **Note** 要確認: 41 内部の Preview API が GA 機能の呼び出しに限られるか、「Preview 手順なし」と両立するかは未確定です。vendor を変えず、現物レビューまで停止点を残します。
 
-## 本実行前の停止条件
+> **Note** 要確認: 41 が Foundry を既定 Allow・ローカル認証有効で作るため、S5 後追いまでの時間と Run 2 Deny の競合が残ります。APIM 社内 IP 制限とサービスからの発信経路、BYO 到達、S6 の Entra ID 接続も未確定です。
 
-コミット未固定、パラメータ未確認、Entra ID 方式未確認、対象 RG が共有、SKU・モデルの利用不可、費用の未合意の場合は展開しません。提供状況とコマンドの可用性を確認した結果を手順へ反映してから実行します。
+実行を完成させるときは、Bicep build、対象環境での validate / what-if、上記未解決の実装レビューを行います。deploy.sh の固定停止点除去はその後です。停止点の後ろの Azure 経路は骨子として保存してあり、現在は到達しません。後追い更新はスクリプトに自動化していません。
 
-基本コマンドの引数は [Azure CLI deployment group](https://learn.microsoft.com/en-us/cli/azure/deployment/group?view=azure-cli-latest) と [Azure CLI group](https://learn.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest) を参照します。ここでの参照はコマンド形式の確認に限定し、サービスの追加機能や料金の根拠には使いません。
+## 再実行
 
+同じ RG・固定 SHA・deploymentTimestamp・prefix を再使用します。41 再実行時の設定巻き戻りや capability host の冪等性は要確認です。変更できると仮定せず、当日手順と S9 の削除を使います。
 
-## Run 0 の結果と現在の停止点
+---
 
-全param・allowed・scope・outputs・SKU・認証の差は [41_parameters.md](params/41_parameters.md)。41はそのままではサーバーレス / Search Basic / LRS / ローカル認証無効 / Entra IDによるApp Insights / Key Vaultの目標を満たしません。`deploy.sh --run 1|2|3`は骨組みの固定停止点を持ち、未実装のままAzureへ送信しません。Run 1までに未解決を実装・レビューし停止点を外す作業が必要です。PARAMETERS_REVIEWEDだけでこの停止を解除できません。
-
-**bicep build はこの環境で未実行**。azもbicepもありません。main.bicepと自前moduleは未コンパイル・未検証です。enablePrivateNetwork=trueは41を呼ばず、15への分岐実装はRun 2で確定（要確認）。15の例JSONを41へ誤送信しません。
-
-監視とPolicyの自前moduleはenableDiagnostics / enablePolicyDefenderがfalseの骨子です。これらの切替は配置の意図を示すだけで、現在の空propertiesを埋めないまま有効化しません。予算承認とDefenderの会社承認はRun 0チェックリストで利用者が確認します。
+前へ: [準備](../docs/01-prerequisites.md) / 次へ: [データ基盤](../docs/11-data.md) / [トップに戻る](../README.md)

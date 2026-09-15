@@ -1,48 +1,73 @@
-// 未検証・Run 3で確定。APIバージョン・必須propertiesは要確認。未コンパイル。
+// 未検証・Run 2 で確定。未コンパイル。経路・OBO・JWT・quota・アプリ配布は要確認。
+// ip-filter のみで Entra 認証やバックエンド許可を実装したとは扱いません。
 targetScope = 'resourceGroup'
 param location string
 param prefix string
-param enableWaf bool = false
-param apimProperties object = {}
-param appProperties object = {}
-param wafProperties object = {}
+@minLength(1)
+param allowedIpRanges string[]
+@minLength(1)
+param allowedIpAddressRanges array
+param publisherEmail string
+param publisherName string
+param tags object = {}
+var suffix = uniqueString(resourceGroup().id, prefix)
+var ipElements = [for range in allowedIpAddressRanges: '<address-range from="${range.from}" to="${range.to}" />']
 resource apim 'Microsoft.ApiManagement/service@2024-05-01' = {
-  name: '${prefix}-apim'
+  name: '${prefix}-apim-${suffix}'
   location: location
+  tags: tags
+  identity: { type: 'SystemAssigned' }
   sku: {
     name: 'BasicV2'
     capacity: 1
   }
-  // publisher・Entra ID・バックエンド・token quota・LLMログは要確認。
-  properties: apimProperties
+  properties: {
+    publisherEmail: publisherEmail
+    publisherName: publisherName
+    publicNetworkAccess: 'Enabled'
+  }
+}
+resource ipPolicy 'Microsoft.ApiManagement/service/policies@2024-05-01' = {
+  parent: apim
+  name: 'policy'
+  properties: {
+    format: 'rawxml'
+    value: '<policies><inbound><ip-filter action="allow">${join(ipElements, '')}</ip-filter></inbound><backend><forward-request /></backend><outbound /><on-error /></policies>'
+  }
 }
 resource appPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: '${prefix}-plan'
+  name: '${prefix}-plan-${suffix}'
   location: location
   kind: 'linux'
-  sku: {
-    name: 'B1'
-  }
-  properties: {
-    reserved: true
-  }
+  tags: tags
+  sku: { name: 'B1' }
+  properties: { reserved: true }
 }
 resource app 'Microsoft.Web/sites@2023-12-01' = {
-  name: '${prefix}-app'
+  name: '${prefix}-app-${suffix}'
   location: location
   kind: 'app,linux'
-  identity: {
-    type: 'SystemAssigned'
+  tags: tags
+  identity: { type: 'SystemAssigned' }
+  properties: {
+    serverFarmId: appPlan.id
+    httpsOnly: true
+    publicNetworkAccess: 'Enabled'
+    siteConfig: {
+      minTlsVersion: '1.2'
+      ftpsState: 'Disabled'
+      ipSecurityRestrictionsDefaultAction: 'Deny'
+      scmIpSecurityRestrictionsUseMain: true
+      scmIpSecurityRestrictionsDefaultAction: 'Deny'
+      ipSecurityRestrictions: [for (ip, index) in allowedIpRanges: {
+        ipAddress: ip
+        action: 'Allow'
+        priority: 100 + index
+        name: 'corporate-${index}'
+      }]
+    }
   }
-  // serverFarmId=appPlan.id、OBO・認証・アプリ配布はRun 3で確定。
-  properties: union(appProperties, { serverFarmId: appPlan.id })
-}
-resource waf 'Microsoft.Network/applicationGateways@2024-05-01' = if (enableWaf) {
-  name: '${prefix}-waf'
-  location: location
-  // WAF_v2、専用subnet、listener、証明書、バックエンドは要確認。
-  properties: wafProperties
 }
 output apimResourceId string = apim.id
 output appResourceId string = app.id
-output wafRequested bool = enableWaf
+output implementationStatus string = 'IP 制限だけ。社内 IP 以外のサービス発信経路・認証・ツール出口は未検証'

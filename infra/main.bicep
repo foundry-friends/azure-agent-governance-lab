@@ -1,35 +1,57 @@
-// 未検証・Run 1で確定。bicep buildはこの環境で未実行。
+// 未検証・Run 1 / Run 2 で確定。未コンパイル・Azure 未実行。
+// 公式 41 に Preview API が含まれるため GA 機能との適合レビューまで固定停止します。
 targetScope = 'resourceGroup'
-
-param enablePrivateNetwork bool = false
+param allowedIpRanges string[] = []
+param allowedIpAddressRanges array = []
 param enableApim bool = false
-param enableWaf bool = false
 param enableDiagnostics bool = false
 param enablePolicyDefender bool = false
 @maxLength(9)
 param prefix string = 'lab'
 param location string = 'japaneast'
+@maxLength(9)
 param aiServices string = prefix
 param firstProjectName string = 'project'
-param projectDescription string = 'some description'
-param displayName string = 'project'
+param projectDescription string = 'エージェント統制の個人検証'
+param displayName string = 'エージェント統制検証'
 param modelName string = 'gpt-5-mini'
 param modelFormat string = 'OpenAI'
 param modelVersion string
 param modelSkuName string = 'GlobalStandard'
 param modelCapacity int = 1
-param aiSearchResourceId string = ''
-param azureStorageAccountResourceId string = ''
-param azureCosmosDBAccountResourceId string = ''
 param projectCapHost string = 'caphostproj'
 param accountCapHost string = 'caphostacc'
+@allowed([false])
 param deployApplicationInsights bool = false
 param deploymentTimestamp string
+param tags object = { purpose: 'agent-governance-lab' }
+param workspaceResourceId string = ''
+param publisherEmail string = ''
+param publisherName string = ''
+param policyDefinitionResourceId string = ''
+@allowed(['Audit', 'Deny'])
+param policyEffect string = 'Audit'
+param policyParameters object = {}
 
-// 41の既定App Insights接続はApiKey。認証方式解決前にtrueへ変更しない。
-// enablePrivateNetwork=trueでは41でなく15が必要。VNet injectionは作成時固定。
-// 15への分岐実装はRun 2で確定（要確認）。公開41へのフォールバックは禁止。
-module standardSetup 'vendor/foundry-samples-58e4127567f7e9afcf0145d874df890284ca5faf/infrastructure/infrastructure-setup-bicep/41-standard-agent-setup/main.bicep' = if (!enablePrivateNetwork) {
+module keyVault 'modules/02_keyvault.bicep' = {
+  name: '${prefix}-keyvault'
+  params: {
+    location: location
+    prefix: prefix
+    allowedIpRanges: allowedIpRanges
+    tags: tags
+  }
+}
+module data 'modules/04_data.bicep' = {
+  name: '${prefix}-data'
+  params: {
+    location: location
+    prefix: prefix
+    allowedIpRanges: allowedIpRanges
+    tags: tags
+  }
+}
+module standardSetup 'vendor/foundry-samples-58e4127567f7e9afcf0145d874df890284ca5faf/infrastructure/infrastructure-setup-bicep/41-standard-agent-setup/main.bicep' = {
   name: '${prefix}-standard'
   params: {
     location: location
@@ -42,28 +64,32 @@ module standardSetup 'vendor/foundry-samples-58e4127567f7e9afcf0145d874df890284c
     modelVersion: modelVersion
     modelSkuName: modelSkuName
     modelCapacity: modelCapacity
-    aiSearchResourceId: aiSearchResourceId
-    azureStorageAccountResourceId: azureStorageAccountResourceId
-    azureCosmosDBAccountResourceId: azureCosmosDBAccountResourceId
+    aiSearchResourceId: data.outputs.aiSearchResourceId
+    azureStorageAccountResourceId: data.outputs.azureStorageAccountResourceId
+    azureCosmosDBAccountResourceId: data.outputs.azureCosmosDBAccountResourceId
     projectCapHost: projectCapHost
     accountCapHost: accountCapHost
     deployApplicationInsights: deployApplicationInsights
     deploymentTimestamp: deploymentTimestamp
   }
 }
-
-module network 'modules/03_network.bicep' = if (enablePrivateNetwork) {
-  name: '${prefix}-network'
+// 41 のトップレベル outputs はありません。固定版と同じ名前の式を使い、S5 で実物照合します。
+var foundrySuffix = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
+module networkAcls 'modules/03_network_acls.bicep' = {
+  name: '${prefix}-network-acls'
   params: {
-    location: location
-    prefix: prefix
+    foundryAccountName: toLower('${aiServices}${foundrySuffix}')
+    allowedIpRanges: allowedIpRanges
   }
+  dependsOn: [standardSetup]
 }
 module diagnostics 'modules/06_diagnostics.bicep' = if (enableDiagnostics) {
   name: '${prefix}-diagnostics'
   params: {
     location: location
     prefix: prefix
+    workspaceResourceId: workspaceResourceId
+    tags: tags
   }
 }
 module gateway 'modules/07_gateway_app.bicep' = if (enableApim) {
@@ -71,15 +97,20 @@ module gateway 'modules/07_gateway_app.bicep' = if (enableApim) {
   params: {
     location: location
     prefix: prefix
-    enableWaf: enableWaf
+    allowedIpRanges: allowedIpRanges
+    allowedIpAddressRanges: allowedIpAddressRanges
+    publisherEmail: publisherEmail
+    publisherName: publisherName
+    tags: tags
   }
 }
 module policyDefender 'modules/08_policy_defender.bicep' = if (enablePolicyDefender) {
   name: '${prefix}-policy'
   params: {
     prefix: prefix
+    policyDefinitionResourceId: policyDefinitionResourceId
+    policyEffect: policyEffect
+    policyParameters: policyParameters
   }
 }
-
-// 公式41にはトップレベルoutputsがない。実リソースIDを架空のoutputsで参照しない。
-output implementationStatus string = '未検証・骨組み。Run 1/2/3で要確認を解消する'
+output implementationStatus string = '未検証。S5 の後追い更新・S6 の接続・S7 の認証経路・S8 の型別定義は未完了'

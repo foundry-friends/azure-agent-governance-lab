@@ -1,29 +1,21 @@
-// 未検証・Run 1で確定。APIバージョン・カテゴリ・送信認証は要確認。未コンパイル。
-// 他サービスへの診断設定はRun 1/2/3で対象typeごとに確定。LAWはS1と所有を調整。
+// 未検証・Run 1 で確定。未コンパイル。Entra ID のみの Foundry 接続は要確認。
+// LAW は S1 の所有です。診断カテゴリ・個別リソースへの設定は S6 の portal 手順で確定します。
 targetScope = 'resourceGroup'
 param location string
 param prefix string
-param foundryAccountName string = ''
-param workspaceResourceId string = ''
-param diagnosticLogs array = []
-param applicationInsightsProperties object = {}
-resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
-  name: foundryAccountName
-}
-resource diagnostic 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: '${prefix}-diagnostic'
-  scope: foundry
-  properties: {
-    workspaceId: workspaceResourceId
-    logs: diagnosticLogs
-  }
-}
+@minLength(1)
+param workspaceResourceId string
+param tags object = {}
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: '${prefix}-appinsights'
   location: location
   kind: 'web'
-  // Entra IDのみの送信・接続を確定するまで実行しない。
-  properties: applicationInsightsProperties
+  tags: tags
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: workspaceResourceId
+    DisableLocalAuth: true
+  }
 }
-output diagnosticResourceId string = diagnostic.id
 output appInsightsResourceId string = appInsights.id
+output implementationStatus string = 'App Insights 本体だけ。Foundry 接続・診断設定・本文収集は S6 で未完了'

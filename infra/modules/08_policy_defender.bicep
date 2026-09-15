@@ -1,18 +1,19 @@
-// 未検証・Run 1（Audit）/ Run 3（Deny・評価）で確定。APIバージョンは要確認。
-// Defenderはsubscription scopeの課金プラン。RGモジュールで架空のplanを有効化しない。
-// az security pricingのplan/subplan/extensionと承認・戻し方を確定して別途実行。
+// 未検証・Run 1（Audit）/ Run 2（Deny・評価）で確定。未コンパイル。
+// 定義の effect・alias・対象型は要確認。Defender のサブスクリプション課金は変更しません。
 targetScope = 'resourceGroup'
 param prefix string
-param policyDefinitionResourceId string = ''
+@minLength(1)
+param policyDefinitionResourceId string
+@allowed(['Audit', 'Deny'])
+param policyEffect string = 'Audit'
 param policyParameters object = {}
 resource policyAssignment 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
   name: '${prefix}-policy'
   properties: {
     policyDefinitionId: policyDefinitionResourceId
-    parameters: policyParameters
-    // effectは定義が許す値だけ。DoNotEnforceとAuditは同義ではない。
-    enforcementMode: 'DoNotEnforce'
+    parameters: union(policyParameters, { effect: { value: policyEffect } })
+    enforcementMode: 'Default'
   }
 }
 output policyAssignmentResourceId string = policyAssignment.id
-output defenderStatus string = '要確認・サブスクリプション管理者の承認と現行プラン確認が必要'
+output defenderStatus string = '未変更。S8 で承認・現行状態・復帰方法を確認'

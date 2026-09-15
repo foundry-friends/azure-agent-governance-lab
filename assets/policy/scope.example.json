@@ -1,0 +1,13 @@
+{
+  "properties": {
+    "displayName": "検証用 Policy 割当",
+    "policyDefinitionId": "<policy-definition-resource-id>",
+    "scope": "<dedicated-resource-group-resource-id>",
+    "parameters": {
+      "effect": {
+        "value": "Audit"
+      }
+    },
+    "enforcementMode": "Default"
+  }
+}

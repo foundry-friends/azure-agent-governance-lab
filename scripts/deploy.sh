@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 # 未実行の手順ドラフト。Azure に対する実機検証は行っていません。
 set -euo pipefail
-echo "要確認：Run 2 は公式15を呼ぶ分岐が未実装です。41へフォールバックせず停止します。"
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 fail() { printf '%s\n' "$*" >&2; exit 1; }
-[[ $# -eq 2 && "$1" == --run && "$2" =~ ^[123]$ ]] || fail '使い方: bash scripts/deploy.sh --run 1|2|3'
+[[ $# -eq 2 && "$1" == --run && "$2" =~ ^[12]$ ]] || fail '使い方: bash scripts/deploy.sh --run 1|2'
 RUN="$2"
 case "$RUN" in
-  1) EXTRA_PARAMETERS=(enablePrivateNetwork=false enableApim=false enableWaf=false) ;;
-  2) fail '要確認：Run 2の15分岐・ネットワーク・認証・費用の実装を確定してください。' ;;
-  3) EXTRA_PARAMETERS=(enablePrivateNetwork=false enableApim=true) ;;
+  1) EXTRA_PARAMETERS=(enableApim=false) ;;
+  2) EXTRA_PARAMETERS=(enableApim=true) ;;
 esac
 [[ -f .env ]] || fail '.env がありません。.env.example をコピーしてください。'
 # .env は shell コードです。信頼できるローカルファイルだけを読み込みます。
@@ -28,7 +26,7 @@ for field in AZURE_SUBSCRIPTION_ID AZURE_TENANT_ID AZURE_RESOURCE_GROUP; do
   require_value "$field"
 done
 
-for field in AZURE_LOCATION AZURE_DEPLOYMENT_NAME FOUNDRY_SAMPLES_COMMIT PARAMETERS_FILE; do
+for field in AZURE_LOCATION AZURE_DEPLOYMENT_NAME FOUNDRY_SAMPLES_COMMIT PARAMETERS_FILE ALLOWED_IP_RANGES; do
   require_value "$field"
 done
 [[ "$AZURE_LOCATION" == japaneast ]] || fail 'このドラフトのリージョンは japaneast です。'
@@ -41,8 +39,8 @@ TEMPLATE_FILE="infra/main.bicep"
 [[ -f "infra/vendor/foundry-samples-${FOUNDRY_SAMPLES_COMMIT}/infrastructure/infrastructure-setup-bicep/41-standard-agent-setup/main.bicep" ]] || fail '固定版41を取得してください。'
 [[ -f "$TEMPLATE_FILE" ]] || fail '要確認：固定コミットの main.bicep を infra/README.md に従って用意してください。'
 command -v python3 >/dev/null 2>&1 || fail 'JSON のローカル検査に Python 3 が必要です。'
-python3 - "$PARAMETERS_FILE" <<'PYJSON'
-import json, sys
+python3 - "$PARAMETERS_FILE" "$ALLOWED_IP_RANGES" "$RUN" <<'PYJSON'
+import json, sys, ipaddress, re
 from pathlib import Path
 p = Path(sys.argv[1])
 raw = p.read_text(encoding='utf-8')
@@ -51,11 +49,36 @@ if 'metadata' in data or '要確認' in raw or '<' in raw or '>' in raw:
     sys.exit('要確認の注記・metadata・プレースホルダーを解消してください。')
 if not isinstance(data.get('parameters'), dict) or not data['parameters']:
     sys.exit('parameters がありません。')
-# 正しいパラメータ名・SKU・認証方式の判定は main.bicep のレビューと validate に委ねます。
+params = {k: v['value'] for k, v in data['parameters'].items()}
+allowed = set(re.findall(r'^param (\w+) ', Path('infra/main.bicep').read_text(), re.M))
+if set(params) - allowed:
+    sys.exit('main.bicep にないパラメータがあります。')
+try:
+    ips = json.loads(sys.argv[2])
+    if not isinstance(ips, list) or not ips or not all(isinstance(ip, str) for ip in ips):
+        raise ValueError()
+    nets = [ipaddress.ip_network(ip, strict=True) for ip in ips]
+    if any(n.version != 4 or n.prefixlen == 0 or not n.network_address.is_global or not n.broadcast_address.is_global for n in nets):
+        raise ValueError()
+    if sum(n.num_addresses for n in ipaddress.collapse_addresses(nets)) >= 2**32:
+        raise ValueError()
+except (ValueError, TypeError):
+    sys.exit('ALLOWED_IP_RANGES は非空の社内公開 IPv4 CIDR 配列にします。全許可は禁止です。')
+if params.get('allowedIpRanges') != ips:
+    sys.exit('.env とローカル JSON の IP 許可リストが一致しません。')
+if params.get('enableApim') is not (sys.argv[3] == '2'):
+    sys.exit('Run と enableApim が一致しません。')
+if params.get('deployApplicationInsights', False) is not False:
+    sys.exit('41 の App Insights 接続は使用しません。')
+if sys.argv[3] == '2':
+    expected = [{'from': str(n.network_address), 'to': str(n.broadcast_address)} for n in nets]
+    if params.get('allowedIpAddressRanges') != expected:
+        sys.exit('APIM の開始・終了アドレスが CIDR と一致しません。')
+# CIDR の所有・承認、認証経路、SKU はレビューと実機確認で判定します。
 PYJSON
 # 固定停止点：未完成の骨組みをレビュー済みフラグだけで展開しません。
-# BYO事前作成、ローカル認証、Key Vault、S6のEntra ID接続、自前moduleを
-# 実装・レビューし、bicep buildで確認した後にこの停止点を除去します。
+# BYO の到達・41 の GA 適合性・S5 後追い・S6 Entra ID 接続・S7 経路・S8 定義を
+# 実装レビューし、bicep build で確認した後にこの停止点を除去します。
 fail '要確認：骨組みは未コンパイル・未完成です。infra/params/41_parameters.mdの差分を解消してください。'
 # 以下は完成後の実行経路の骨子です。この版ではAzureコマンドへ到達しません。
 # 自動ログインはしません。未ログイン時は利用者が az login を実行します。
@@ -87,4 +110,4 @@ az deployment group create --subscription "$AZURE_SUBSCRIPTION_ID" \
 az deployment group show --subscription "$AZURE_SUBSCRIPTION_ID" \
   --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_DEPLOYMENT_NAME" \
   --query '{state:properties.provisioningState,outputNames:keys(properties.outputs)}' --output json
-printf '%s\n' '展開処理が終了しました。docs/sections/05・06・08 と checks の実呼び出し検証へ進んでください。'
+printf '%s\n' '展開処理が終了しました。docs/12-foundry-agent.md・13-monitoring.md・15-policy-defender-eval.md と checks の実呼び出し検証へ進んでください。'

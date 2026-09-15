@@ -18,9 +18,9 @@
 | `modelVersion` | `string` | `'2025-04-14'` | 制約なし | 省略可（既定あり） | 配置するモデルの版 | `<model-version>`：要確認。gpt-4.1の既定版を流用しない |
 | `modelSkuName` | `string` | `'GlobalStandard'` | 制約なし | 省略可（既定あり） | モデル配置のSKU | `GlobalStandard` |
 | `modelCapacity` | `int` | `40` | 制約なし | 省略可（既定あり） | モデル配置容量（README/descriptionはTPM、単位・クォータ換算は要確認） | `1`は型を示す例。必要TPM・割当単位は要確認 |
-| `aiSearchResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存AI Searchの完全ARM ID。空なら新規作成 | Basic・ローカル認証無効の既存IDをlocal.jsonへ（作成方法は要確認） |
-| `azureStorageAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Storageの完全ARM ID。空なら新規作成 | LRS・Shared Key無効の既存IDをlocal.jsonへ（作成方法は要確認） |
-| `azureCosmosDBAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Cosmosの完全ARM ID。空なら新規作成 | サーバーレスの既存IDをlocal.jsonへ（作成方法は要確認） |
+| `aiSearchResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存AI Searchの完全ARM ID。空なら新規作成 | Basic・ローカル認証無効の既存IDをlocal.jsonへ（04_data.bicep で作成・実機は未検証） |
+| `azureStorageAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Storageの完全ARM ID。空なら新規作成 | LRS・Shared Key無効の既存IDをlocal.jsonへ（04_data.bicep で作成・実機は未検証） |
+| `azureCosmosDBAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Cosmosの完全ARM ID。空なら新規作成 | サーバーレスの既存IDをlocal.jsonへ（04_data.bicep で作成・実機は未検証） |
 | `projectCapHost` | `string` | `'caphostproj'` | 制約なし | 省略可（既定あり） | project capability host名（READMEに個別説明なし、コードで確認） | `caphostproj` |
 | `accountCapHost` | `string` | `'caphostacc'` | 制約なし | 省略可（既定あり） | account capability host名（READMEに個別説明なし、コードで確認） | `caphostacc` |
 | `deployApplicationInsights` | `bool` | `true` | 制約なし | 省略可（既定あり） | LAW・App Insights・接続とproject MI読取ロールの作成を切替 | 例は `false`。目標はApp Insightsありだが、公式のApiKey接続を使わずS6で方式確定（要確認） |
@@ -34,14 +34,14 @@
 | Run 1の目標 | 41で設定できるか | 根拠・代替 |
 |---|---|---|
 | Japan East | paramで設定可 | locationのallowedにjapaneast。モデル提供・クォータは要確認 |
-| Cosmosサーバーレス | 容量モードは41では設定不可・要確認 | 新規作成にEnableServerlessなし。既存サーバーレスをazureCosmosDBAccountResourceIdで渡すかテンプレ改変。後から容量方式だけ変えられるとは扱わない |
-| AI Search Basic | SKUは41では設定不可・要確認 | 新規はstandard固定。事前作成BasicをaiSearchResourceIdで渡すかテンプレ改変 |
+| Cosmosサーバーレス | 容量モードは41では設定不可・要確認 | 新規作成にEnableServerlessなし。既存サーバーレスをazureCosmosDBAccountResourceIdで渡す（04_data.bicep を使用）。後から容量方式だけ変えられるとは扱わない |
+| AI Search Basic | SKUは41では設定不可・要確認 | 新規はstandard固定。事前作成BasicをaiSearchResourceIdで渡す（04_data.bicep を使用） |
 | gpt-5 mini Global Standard | paramで名前・版・SKU・容量を指定可 | modelName=gpt-5-mini、modelSkuName=GlobalStandard。modelVersion・実提供は要確認 |
-| ローカル認証無効 | 41では設定不可・要確認 | Foundry/Searchはfalse固定、Cosmosはtrue、StorageはShared Key無効。BYO側の設定＋Foundry後追い設定またはテンプレ改変 |
-| App Insightsあり | 有無のparamはあるが目標の認証方式は不可 | deployApplicationInsights=trueはApiKey/ConnectionString接続。Entra IDのみの経路は41では設定不可・要確認。falseで停止しS6の後追い接続かテンプレ改変を検討 |
-| Storage LRS | SKUは41では設定不可・要確認 | Japan Eastの既定はStandard_ZRS。既存LRSをazureStorageAccountResourceIdで渡すかテンプレ改変 |
-| Key Vault | 41では設定不可・要確認 | 作成resourceもparamもない。S2で用途と別途作成・接続の必要性を確定 |
-| 命名・タグ | 接頭辞・時刻は設定可、tagsなし | deploymentTimestampを固定。タグは41では設定不可・要確認、後追い適用または改変 |
+| ローカル認証無効 | 41では設定不可・要確認 | Foundry/Searchはfalse固定、Cosmosはtrue、StorageはShared Key無効。04_data.bicep の設定＋S5 の Foundry 後追い設定 |
+| App Insightsあり | 有無のparamはあるが目標の認証方式は不可 | deployApplicationInsights=trueはApiKey/ConnectionString接続。Entra IDのみの経路は41では設定不可・要確認。falseで停止しS6 の後追い接続を検討（06_diagnostics.bicep は本体のみ） |
+| Storage LRS | SKUは41では設定不可・要確認 | Japan Eastの既定はStandard_ZRS。既存LRSをazureStorageAccountResourceIdで渡す（04_data.bicep を使用） |
+| Key Vault | 41では設定不可・要確認 | 作成resourceもparamもない。S2 の 02_keyvault.bicep で RBAC 認可・IP 制限を設定。キー保管で代用しない |
+| 命名・タグ | 接頭辞・時刻は設定可、tagsなし | deploymentTimestampを固定。タグは41では設定不可・要確認。自前 module と S5 の後追い適用で補う |
 
 
 新規データ接続はAADですが、ローカル認証を無効化したことと同義ではありません。C01〜C05をPassにする根拠は実機試験で残します。例JSONのApp Insights=falseは目標の削除ではなく、未解決の接続を展開しないための保留です。
@@ -50,7 +50,7 @@
 
 - `targetScope`の明記はなくBicep既定のresourceGroup。READMEも`az deployment group create`を使用。ラッパは`targetScope = 'resourceGroup'`を明記。
 - 固定41のREADMEは Foundry Account Owner と Role Based Access Administrator を要求。計画側はRG Ownerまたはリソース作成権限＋User Access Administrator。名称の対応・必要なデータ面権限・会社の実効権限は要確認で、片方の記載だけで十分と断定しません。
-- 必須の既存リソースは展開先RG。Search / Storage / Cosmos のIDは任意だが、渡す場合は既存実体・アクセス可能なscopeが必要。今回の目標SKUではこれらのBYO事前準備が必要（またはテンプレ改変）。
+- 必須の既存リソースは展開先RG。Search / Storage / Cosmos のIDは任意だが、渡す場合は既存実体・アクセス可能なscopeが必要。今回の目標SKUではこれらのBYO事前準備が必要（04_data.bicep）。
 - ID指定時には他RG/他subscriptionへロール割当するmoduleもあるため、全スコープの権限を確認。実IDは非公開local.jsonに保存。
 - CosmosのREADMEはProvisioned/Serverless対応と3000RU/sの注意を併記。接続はAADかつmetadata.ResourceId必須。ServerlessへProvisionedのRU/s指定をそのまま渡さない。
 - 41はKey Vault、予算、Policy、Defenderプランを作成しない。S1/S2/S8で別途扱う。
@@ -70,11 +70,13 @@
 
 出力の一括ダンプはせず、必要IDだけポータルで照合して.envに記録します。outputs未確認という旧ドラフトの要確認は「トップレベル0件」と机上解消しましたが、値の取得手順・新ランタイム対応・実機冪等性は要確認です。
 
-## 5. Run 2用15の全param
+## 5. 使用しないテンプレート15の全param（保存用の机上調査）
+
+> **Note** v2.1 では 15 を使いません。この節は過去の机上調査の保存で、展開手順ではありません。
 
 同じ固定SHAの15を机上確認。scopeはresourceGroup、トップレベルoutputsは0件。READMEはFoundry Account Owner、OwnerまたはRole Based Access Administrator、操作用Foundry Userを記載。会社権限は要確認です。
 
-| 名前 | 型 | 既定値 | allowed | 必須か | 用途（README／不足分は宣言・依存module） | Run 2 の設定 |
+| 名前 | 型 | 既定値 | allowed | 必須か | 用途（README／不足分は宣言・依存module） | 旧設定（非採用） |
 |---|---|---|---|---|---|---|
 | `location` | `string` | `'eastus'` | westus, eastus, eastus2, japaneast, francecentral, spaincentral, uaenorth, southcentralus, italynorth, germanywestcentral, brazilsouth, southafricanorth, australiaeast, swedencentral, canadaeast, canadacentral, westeurope, westus3, uksouth, southindia, koreacentral, polandcentral, switzerlandnorth, norwayeast | 省略可（既定あり） | リソースとprojectのリージョン | `japaneast` |
 | `aiServices` | `string` | `'aiservices'` | 制約なし | 省略可（既定あり） | account名の接頭辞（41は最大9文字） | `lab`（ラッパの命名prefixと一致） |
@@ -99,9 +101,9 @@
 | `enableContainerRegistry` | `bool` | `true` | 制約なし | 省略可（既定あり） | Premium ACRとPE作成。prompt agent本編はfalse | `false`（本編にACRを追加しない） |
 | `developerIpCidr` | `string` | `''` | 制約なし | 省略可（既定あり） | ACR push用の許可元CIDR | 既定値を確認。環境依存値はlocal.jsonで要確認 |
 | `createAccountCapabilityHost` | `bool` | `false` | 制約なし | 省略可（既定あり） | 明示的なaccount caphost作成。新規injection時の自動作成と重複させない | `false`（自動生成との重複回避） |
-| `aiSearchResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存AI Searchの完全ARM ID。空なら新規作成 | Basic・ローカル認証無効の既存IDをlocal.jsonへ（作成方法は要確認） |
-| `azureStorageAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Storageの完全ARM ID。空なら新規作成 | LRS・Shared Key無効の既存IDをlocal.jsonへ（作成方法は要確認） |
-| `azureCosmosDBAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Cosmosの完全ARM ID。空なら新規作成 | サーバーレスの既存IDをlocal.jsonへ（作成方法は要確認） |
+| `aiSearchResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存AI Searchの完全ARM ID。空なら新規作成 | Basic・ローカル認証無効の既存IDをlocal.jsonへ（04_data.bicep で作成・実機は未検証） |
+| `azureStorageAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Storageの完全ARM ID。空なら新規作成 | LRS・Shared Key無効の既存IDをlocal.jsonへ（04_data.bicep で作成・実機は未検証） |
+| `azureCosmosDBAccountResourceId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存Cosmosの完全ARM ID。空なら新規作成 | サーバーレスの既存IDをlocal.jsonへ（04_data.bicep で作成・実機は未検証） |
 | `dnsZonesSubscriptionId` | `string` | `''` | 制約なし | 省略可（既定あり） | 既存DNSのsubscription。空は現在のsubscription | 既定値を確認。環境依存値はlocal.jsonで要確認 |
 | `existingDnsZones` | `object` | `{   'privatelink.services.ai.azure.com': ''   'privatelink.openai.azure.com': ''   'privatelink.cognitiveservices.azure.com': ''                  'privatelink.search.windows.net': ''              'privatelink.blob.core.windows.net': ''                               'privatelink.documents.azure.com': ''                          'privatelink.azurecr.io': '' }` | 制約なし | 省略可（既定あり） | 各Private DNS zone名→既存RG、空値なら作成 | 既定値を確認。環境依存値はlocal.jsonで要確認 |
 | `existingMonitorDnsZones` | `object` | `{   'privatelink.monitor.azure.com': ''   'privatelink.oms.opinsights.azure.com': ''   'privatelink.ods.opinsights.azure.com': ''   'privatelink.agentsvc.azure-automation.net': '' }` | 制約なし | 省略可（既定あり） | Azure Monitor用Private DNS zone名→既存RG、空値なら作成 | 既定値を確認。環境依存値はlocal.jsonで要確認 |
@@ -109,13 +111,20 @@
 | `projectCapHost` | `string` | `'caphostproj'` | 制約なし | 省略可（既定あり） | project capability host名（READMEに個別説明なし、コードで確認） | `caphostproj` |
 
 
-配列とobjectの既定値も上表に全文を掲載。全31paramが既定を持ちますが、新規VNetではvnetNameと各CIDRを埋める必要があります。READMEは [VNet背後のagent tools非対応](https://github.com/microsoft-foundry/foundry-samples/tree/58e4127567f7e9afcf0145d874df890284ca5faf/infrastructure/infrastructure-setup-bicep/15-private-network-standard-agent-setup/README.md) とし19を案内しているため、MCP/OpenAPI閉域の検証範囲は要確認。15への分岐実装はRun 2で確定します。
+配列とobjectの既定値も上表に全文を掲載。全31paramが既定を持ちますが、新規VNetではvnetNameと各CIDRを埋める必要があります。READMEは [VNet背後のagent tools非対応](https://github.com/microsoft-foundry/foundry-samples/tree/58e4127567f7e9afcf0145d874df890284ca5faf/infrastructure/infrastructure-setup-bicep/15-private-network-standard-agent-setup/README.md) とし19を案内しているため、MCP/OpenAPI閉域の検証範囲は要確認。15 の分岐は作成しません。
 
-15はACR Premiumが既定trueなので例ではfalse。Azure Monitor Private Link Scope・追加DNS・PEとApp Insightsを作成するため、見積りの6PE/6zoneとの差は要確認。新規accountのcapability hostは自動作成されるため、createAccountCapabilityHostはfalseを維持します。既存公開accountへの後付けinjectionには利用しません。
+旧検討では15のACR Premium既定trueに対してfalseを想定していました。Azure Monitor Private Link Scope・追加DNS・PEとApp Insightsを作成するため、旧見積りの6PE/6zoneとの差は要確認。新規accountのcapability hostは自動作成されるため、createAccountCapabilityHostはfalseを維持します。既存公開accountへの後付けinjectionには利用しません。
 
 ## 6. 元の仮パラメータからの移行
 
 - `location`：要確認だった名前とallowedを確認し、実名のまま採用。
 - `cosmosDbCapacityMode`：要確認の仮名を削除。対応する容量paramはなく、BYO用`azureCosmosDBAccountResourceId`を使用する方針。
 - `aiSearchSku`：要確認の仮名を削除。SKU paramはなく、BYO用`aiSearchResourceId`を使用する方針。
-- RG scope・outputs・ファイル存在の机上確認は完了。キーや接続文字列を使わず全目標を実現する方法は未確定。
+- RG scope・outputs・ファイル存在の机上確認は完了。BYO のコード化は完了。Foundry 後追いと Entra ID のみの App Insights 接続は未確定。
+
+
+## 7. v2.1 の適用方法
+
+公式 41 の 17 param の調査結果を保存しています。run1/run2.example.json は公式へ直接渡す JSON ではなく、自前 main.bicep の入力です。41 の BYO ID は 04_data.bicep の 3 outputs から渡します。SKU 3 件・データ認証・Key Vault・自前タグをコード化しましたが、実機で解消を確認したわけではありません。
+
+41 には networkAcls / publicNetworkAccess / disableLocalAuth の入力 param がありません。03_network_acls.bicep は既存 account の参照と更新目標を返し、S5 の az resource update で後追いします。Foundry と 41 管理のタグ、agent service 到達、App Insights 接続、Preview API の GA 機能適合性は要確認です。

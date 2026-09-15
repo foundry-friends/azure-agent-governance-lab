@@ -2,12 +2,15 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "metadata": {
-    "_comment": "要確認：41の実param名のみ。BYOデータ作成・Foundryローカル認証無効・S2 Key Vault・S6 Entra IDのApp Insightsは未実装。App Insights=falseは接続文字列経路を避ける保留。目標はApp Insightsあり。modelVersionと容量を確認し、metadataとplaceholderを解消するまで展開不可。",
+    "_comment": "要確認：自前ラッパ向け。BYO は data outputs を 41 に渡します。IP 配列は .env と一致させます。S5 後追い・S6 接続・S7 経路・S8 定義・GA 適合性が未解決。監視/Policy の false は保留であり目標達成ではありません。",
     "reviewRequired": true
   },
   "parameters": {
     "location": {
       "value": "japaneast"
+    },
+    "prefix": {
+      "value": "lab"
     },
     "aiServices": {
       "value": "lab"
@@ -36,15 +39,6 @@
     "modelCapacity": {
       "value": 1
     },
-    "aiSearchResourceId": {
-      "value": "<existing-basic-search-resource-id>"
-    },
-    "azureStorageAccountResourceId": {
-      "value": "<existing-lrs-storage-resource-id>"
-    },
-    "azureCosmosDBAccountResourceId": {
-      "value": "<existing-serverless-cosmos-resource-id>"
-    },
     "projectCapHost": {
       "value": "caphostproj"
     },
@@ -56,6 +50,33 @@
     },
     "deploymentTimestamp": {
       "value": "20260915000000"
+    },
+    "allowedIpRanges": {
+      "value": [
+        "<corporate-public-ipv4-cidr>"
+      ]
+    },
+    "allowedIpAddressRanges": {
+      "value": []
+    },
+    "enableApim": {
+      "value": false
+    },
+    "enableDiagnostics": {
+      "value": false
+    },
+    "enablePolicyDefender": {
+      "value": false
+    },
+    "policyEffect": {
+      "value": "Audit"
+    },
+    "tags": {
+      "value": {
+        "purpose": "agent-governance-lab",
+        "run": "1",
+        "deleteAfter": "<deletion-date>"
+      }
     }
   }
 }
