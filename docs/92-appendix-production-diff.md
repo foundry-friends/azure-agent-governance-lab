@@ -1,6 +1,6 @@
 # B. 本番との差（Baseline）
 
-このセクションを使う Run: Run 1／Run 2 の差分整理。先に要るセクション: S0〜S9。
+本編の第0〜10章とは別の参考資料です。通常手順では開く必要はありません。
 
 > **Note** 現在は骨組み・Azure 未実行です。コマンドはリポジトリ直下の Bash で実行する予定の手順です。
 
@@ -23,7 +23,7 @@ N1〜N3 と D1〜D12 が前提です。ここにある候補を追加展開す�
 | Managed VNet | CLI preview の作成手順は対象外 | GA 手順が整った段階で採否を再評価 |
 | WAF | 使用しません | 入口の攻撃パターン検知と常設の要否 |
 | APIM | Basic v2 | Standard v2 と閉域経路の設計 |
-| AI Search | Basic | S1、容量と可用性 |
+| AI Search | Basic | 第1章、容量と可用性 |
 | Cosmos DB | サーバーレス | Provisioned 3000 RU/s を起点に要件で見直し |
 | 管理接続 | Bastion なし | Bastion と管理アクセス監査 |
 | Storage | Standard_LRS | GRS と復旧要件 |

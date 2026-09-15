@@ -11,4 +11,4 @@
 
 Cosmos / Storage / Search / Key Vault / APIM / App Service は設定名と Policy alias が違います。この例を流用せず、型別の組み込み定義またはカスタム条件を確認します。特に APIM の XML ポリシー内の IP 判定を一般的な ARM プロパティ検査で覆ったと扱いません。対象を拡張するまで C06 全体は未完了です。
 
-[S8](../../docs/15-policy-defender-eval.md) で Audit と Deny の期待結果を別々に記録します。Deny は S5 の後追い設定や BYO の公開復旧と競合し得るため、スコープと例外を確認します。
+[S8](../../docs/09-policy-defender-eval.md) で Audit と Deny の期待結果を別々に記録します。Deny は S5 の後追い設定や BYO の公開復旧と競合し得るため、スコープと例外を確認します。

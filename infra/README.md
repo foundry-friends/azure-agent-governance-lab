@@ -1,5 +1,7 @@
 # 公式テンプレートと自前 Bicep の利用方法
 
+> **Note** 本文の実行順は README の第0〜10章に変更しました。この資料の S1〜S9 と run1/run2 は旧 IaC の識別子です。GUI 主線の途中で一式を実行する手順ではありません。作成済みリソースへの重複展開を避け、固定停止点を維持します。
+
 ## 対象と固定版
 
 Run 1 / Run 2 は固定版の 41-standard-agent-setup を自前 main.bicep から呼びます。15 は使いません。[PINNED_COMMIT](PINNED_COMMIT.md) と [41 の調査](params/41_parameters.md) を参照します。vendor は変更していません。
@@ -35,7 +37,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 | 07_gateway_app | Basic v2・B1・IP 制限 | OBO・JWT・許可済みツール・quota・アプリ配布 |
 | 08_policy_defender | effect を指定した Policy 割当 | 定義 alias と型別対応・Defender は手動 |
 
-`existing` は更新操作ではありません。03 モジュールを配置しただけで C08 が完了したと扱わず、[S5](../docs/12-foundry-agent.md) の明示的な更新を行います。41 にトップレベル outputs はありません。account 名の式を固定ソースから合わせていますが、実物との一致を確認します。ラッパは実 ID や接続文字列を一括出力しません。
+`existing` は更新操作ではありません。03 モジュールを配置しただけで C08 が完了したと扱わず、[S5](../docs/04-foundry-agent.md) の明示的な更新を行います。41 にトップレベル outputs はありません。account 名の式を固定ソースから合わせていますが、実物との一致を確認します。ラッパは実 ID や接続文字列を一括出力しません。
 
 ## パラメータを確定する
 
@@ -74,7 +76,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 
 ---
 
-前へ: [準備](../docs/01-prerequisites.md) / 次へ: [データ基盤](../docs/11-data.md) / [トップに戻る](../README.md)
+前へ: [準備](../docs/01-prerequisites.md) / 次へ: [データ基盤](../docs/03-data.md) / [トップに戻る](../README.md)
 
 ## bicep build の状態（2026-09-15・Nia の Mac・Azure 未接続）
 

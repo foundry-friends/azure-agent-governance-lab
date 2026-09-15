@@ -1,4 +1,6 @@
-# 設計判断 D1〜D12
+# 設計判断 D1〜D13
+
+通常手順ではなく設計の参考資料です。実行順は [README](../README.md) が正です。
 
 構成 A（Azure 内で完結、Agent 365 なし）の検証用判断です。SKU の利用可否・クォータは要確認です。
 
@@ -14,11 +16,14 @@
 | D8 | 都度構築 | 週 1 回 × 8h を想定し、置きっぱなしを防ぎます。 | 継続稼働、変更管理、バックアップ、災害復旧を整備します。 |
 | D9 | ログ保持 30 日 | 学習に必要な証跡と保管費を両立します。 | 法令・業務要件と機微情報の扱いを踏まえて保持・閲覧権限を定義します。 |
 | D10 | Defender CSPM＋AI Services | Azure 側の検知・態勢管理を検証します。共有サブスクリプションの他チームへの課金に注意します。 | 適用スコープと費用負担を合意し、Agent 365 が必要な機能を追加評価します。 |
-| D11 | エージェントの作り方は prompt agent を既定とし、hosted agent は付録 A | ポータルでノーコードの手順を短く再現し、コンテナ compute を本編へ持ち込みません。S0＋9セクション、Run 2回×初回・再現の2日、日本語・Bashを採用します。 | 作り込みが必要なら専用 identity、/24、private ACR、RAI fail open、egress controls、HITL、Purview middlewareを別途設計します。 |
-| D12 | データ基盤は BYO | 自前 Bicep で目標 SKU・IP 制限・ローカル認証無効を設定し、41 に 3 ID を渡します。41 の新規作成は SKU・認証が固定です。 | 本番は負荷・復旧・閉域要件を別途設計します。 |
+| D11 | エージェントの作り方は prompt agent を既定とし、hosted agent は付録 A | ポータルでノーコードの手順を短く再現し、コンテナ compute を本編へ持ち込みません。実行順は D13 へ改訂。日本語・Cloud Shell Bash を採用します。 | 作り込みが必要なら専用 identity、/24、private ACR、RAI fail open、egress controls、HITL、Purview middlewareを別途設計します。 |
+| D12 | データ基盤は BYO | GUI で目標 SKU・IP 制限・ローカル認証無効を設定し、作成済みの 3 ID を接続に使います。Bicep は任意の再現資料です。41 の新規作成は SKU・認証が固定です。 | 本番は負荷・復旧・閉域要件を別途設計します。 |
 
+| D13 | 第0〜10章の一本道 | 同一環境を作り、統制を加え、最後に一度だけ削除します。再現確認は任意の二周目。 | 本番の変更・運用手順は別途設計します。 |
 
 Standard setup の前提は RG の Owner または User Access Administrator（別途リソース作成権限が必要）です。Cosmos DB の Provisioned には 3000 RU/s 以上の要件を確認します。Serverless も検証対象です。Serverless に Provisioned の RU/s パラメータをそのまま設定しません。04_data.bicep は EnableServerless を設定します。実機での適合性は要確認です。capability host は作成後に変更できません。[Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)
+
+以下の v2.1 の Run 記述は旧計画の背景です。現在の実行順には使いません。
 
 v2.1 は閉域接続なし・社内 IP 限定・送信最小です。Run 1 は最小構成と IP 制限、Run 2 は方式 A と APIM Basic v2 / App Service の検証です。D3〜D7 の旧ネットワーク・入口構成は採用しません。Basic v2 自体は Run 2 で使います。
 
