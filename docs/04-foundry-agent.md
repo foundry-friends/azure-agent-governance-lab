@@ -34,6 +34,8 @@
 
 G1 は [接続の種類](https://learn.microsoft.com/ja-jp/azure/foundry/how-to/connections-add) と [Standard setup](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/standard-agent-setup) の適用範囲の確認です。安定版の管理 API が存在しても、接続機能の GA を意味するとは限りません。Preview の接続作成手順は掲載しません。
 
+D14 は第7章の App Service → Foundry の接続方式です。App Service の VNet 統合では、Agent Service 自体の送信経路は変わらないため、G1〜G3 の停止条件を解消したとは扱いません。
+
 G2 は RBAC だけでは解決しません。社内 IP を許可しても Azure 上のサービスの送信元を許可したことにはなりません。G3 を回避する目的で、キー認証を有効にしたまま作成して後から無効化する手順にも進みません。
 
 ### 作業開始・再開前のチェックリスト
@@ -106,6 +108,8 @@ G2 は RBAC だけでは解決しません。社内 IP を許可しても Azure 
 | `networkAcls.defaultAction` | `Deny` |
 | `networkAcls.ipRules` | 社内公開 IP の許可リスト |
 | `networkAcls.bypass` | `None`。例外の追加は承認済みの通信設計が必要 |
+
+第4章時点では第7章の統合サブネットは未作成です。社内 IP 規則を維持し、第7章で同じ Foundry account に VNet 規則を追加します。第4章へ戻る作業にはしません。
 
 ローカル認証設定の反映には時間がかかる場合があります。管理画面の設定値とデータ面への反映を同一視せず、キーの表示・取得は行いません。
 

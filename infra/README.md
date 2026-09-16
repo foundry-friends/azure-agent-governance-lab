@@ -34,7 +34,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 | 41 | BYO ID を受け取り account/project/モデル/MI/接続/host を作成 | GA 適合性・実機動作 |
 | 03_network_acls | existing account 参照と更新目標 | S5 の後追いコマンド実行 |
 | 06_diagnostics | 既存 LAW に接続する App Insights | Foundry 接続・診断設定・本文 |
-| 07_gateway_app | Basic v2・B1・IP 制限 | OBO・JWT・許可済みツール・quota・アプリ配布 |
+| 07_gateway_app | D14 採用前の Basic v2・B1・IP 制限の骨組み | D14 の VNet 統合・Foundry VNet 規則・ツール API の ID 制限を未反映。本人認証・ツール quota・アプリ配布も未完成 |
 | 08_policy_defender | effect を指定した Policy 割当 | 定義 alias と型別対応・Defender は手動 |
 
 `existing` は更新操作ではありません。03 モジュールを配置しただけで C08 が完了したと扱わず、[S5](../docs/04-foundry-agent.md) の明示的な更新を行います。41 にトップレベル outputs はありません。account 名の式を固定ソースから合わせていますが、実物との一致を確認します。ラッパは実 ID や接続文字列を一括出力しません。
@@ -66,7 +66,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 
 > **Note** 要確認: 41 内部の Preview API が GA 機能の呼び出しに限られるか、「Preview 手順なし」と両立するかは未確定です。vendor を変えず、現物レビューまで停止点を残します。
 
-> **Note** 要確認: 41 が Foundry を既定 Allow・ローカル認証有効で作るため、S5 後追いまでの時間と Run 2 Deny の競合が残ります。APIM 社内 IP 制限とサービスからの発信経路、BYO 到達、S6 の Entra ID 接続も未確定です。
+> **Note** 要確認: 41 が Foundry を既定 Allow・ローカル認証有効で作るため、S5 後追いまでの時間と Run 2 Deny の競合が残ります。D14 の通信方針は採用済みですが、この IaC は未対応です。ツール API を社内 IP のみで制限する旧設定を、そのまま D14 の再現手順として実行しません。BYO 到達、S6 の Entra ID 接続も未確定です。
 
 実行を完成させるときは、Bicep build、対象環境での validate / what-if、上記未解決の実装レビューを行います。deploy.sh の固定停止点除去はその後です。停止点の後ろの Azure 経路は骨子として保存してあり、現在は到達しません。後追い更新はスクリプトに自動化していません。
 

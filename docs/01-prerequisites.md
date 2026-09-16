@@ -34,7 +34,7 @@
 
 > **補足** 本手順の画面名と項目名は、Microsoft Learn 日本語版の表記（2026-09 時点）に合わせています。ポータルの表示言語が英語のままだと項目名が一致しないため、最初に日本語に揃えます。
 
-> **補足** Cloud Shell のコンテナーは Microsoft のネットワークで動き、**送信元 IP は社内 IP ではありません**。リソースの作成や設定の照合（ARM）は影響を受けませんが、社内 IP 許可リストを付けたリソースのデータ面（Blob の読み書き・Key Vault のシークレット取得・APIM の呼び出し）は Cloud Shell からは拒否されます。データ面の試験は社内 PC のブラウザ（ポータル・Foundry ポータル・第7章の呼び出しアプリ）から行います。この値を各リソースの作成時に使います。
+> **補足** Cloud Shell のコンテナーは Microsoft のネットワークで動き、**送信元 IP は社内 IP ではありません**。リソースの作成や設定の照合（ARM）は影響を受けませんが、社内 IP 許可リストを付けたリソースのデータ面（Blob の読み書き・Key Vault のシークレット取得）は Cloud Shell からは拒否されます。D14 のツール用 APIM は ID で制限するため、Cloud Shell からの拒否を IP 制限の結果と決めつけません。データ面の試験は社内 PC のブラウザ（ポータル・Foundry ポータル・第7章の呼び出しアプリ）から行います。この値を各リソースの作成時に使います。
 
 ### Cloud Shell の準備（事前確認）
 
@@ -121,7 +121,7 @@ Standard setup の公式テンプレート 41 を展開する実施者には、�
 | Microsoft.Insights | 第6章（Application Insights・診断設定） | 同上 |
 | Microsoft.ManagedIdentity | 第5章 | 同上 |
 | Microsoft.CloudShell | 第1章（Cloud Shell） | Cloud Shell の Learn ページ |
-| Microsoft.ApiManagement・Microsoft.Web | 第7章（ゲートウェイ追加後 で登録） | このリポジトリの追加 |
+| Microsoft.ApiManagement・Microsoft.Web・Microsoft.Network | 第7章（APIM・App Service・VNet を作成する前に登録状態を確認） | このリポジトリの追加（D14） |
 | Microsoft.PolicyInsights・Microsoft.Security | 第9章（使う直前に登録） | 同上 |
 
 `Microsoft.Consumption`（予算）・`Microsoft.Resources`・`Microsoft.Authorization` は既定で登録済みです。`Microsoft.Bing` は Bing ツールを使う場合だけ必要で、このリポジトリでは登録しません。
@@ -311,7 +311,7 @@ source .env
 
 > **画面の見え方** [予算] の一覧に作成した予算が表示されます。作成直後は評価前のため、現在の支出は 0 または空欄です。コストは通常 8〜24 時間で反映され、予算は 24 時間ごとに評価されます。しきい値を超えると評価後 1 時間以内にメールが届きます。
 
-> **補足** 予算はハードリミットではなく、しきい値を超えても消費は止まりません。上限として機能させる仕組みは 第7章の APIM トークンクォータ（[第7章](07-gateway-app.md)）で扱います。通知メールは `azure-noreply@microsoft.com` から届くため、迷惑メールに振り分けられない設定にします。
+> **補足** 予算はハードリミットではなく、しきい値を超えても消費は止まりません。D14 では本人の呼び出しが App Service → Foundry を直接通るため、ツール経路の APIM quota はモデルのトークン量や Azure 全体の費用上限にはなりません。第7章で扱うツール呼び出しの制限と、予算通知・稼働時間・削除予定を分けて管理します。通知メールは `azure-noreply@microsoft.com` から届くため、迷惑メールに振り分けられない設定にします。
 
 > **Note** 要確認: 予算フォームの項目名（[作成日]・[有効期限]・[予算額]・[種類]・[予算の %]）は Learn の本文に引用が無く、画面の想定表記です。初回で実際の表示名に合わせます。
 
@@ -403,6 +403,8 @@ GUI で作ったものと同じ RG 内のリソースを、再現日や 2 回目
 > **Note** 要確認: Azure CLI の `az consumption budget` はコマンド群全体が Preview のため使いません。Bicep を RG 直下（`targetScope = 'resourceGroup'`）に配置する完成例は Learn に無く、ARM テンプレートリファレンスの記載に基づいています。任意の再現時に実機確認します。
 
 
+- 出典: [Azure リソース プロバイダー](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/resource-providers-and-types)（取得日 2026-09-16。D14 に伴う整合修正の根拠）
+- 出典: [LLM トークン制限](https://learn.microsoft.com/ja-jp/azure/api-management/llm-token-limit-policy)（取得日 2026-09-16。D14 に伴う整合修正の根拠）
 - 出典: [Azure portal でリソース グループを管理する](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/manage-resource-groups-portal)（取得日 2026-09-15）
 - 出典: [Azure portal を使用してリソースにタグを付ける](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/tag-resources-portal)（取得日 2026-09-15）
 - 出典: [Azure リソース プロバイダーと種類](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/resource-providers-and-types)（取得日 2026-09-15）

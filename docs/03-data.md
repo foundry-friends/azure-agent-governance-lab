@@ -316,6 +316,8 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 
 キー・接続文字列は取得しません。作成画面や JSON の実値を GitHub に貼り付けません。
 
+> **補足** D14 の App Service 統合サブネットは、第7章の App Service → Foundry 用です。Agent Service がこのサブネットから発信するわけではないため、本章のデータ基盤への到達条件は解決しません。第4章の G2 を引き続き確認します。
+
 ## 3.4. 完了条件
 
 Azure Cloud Shell の [Bash] で確認します。各コマンドの ID を、3.3.4で記録した対象の ARM ID に置換します。すべて読み取り操作です。

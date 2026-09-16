@@ -48,7 +48,7 @@ D10 は検討対象の保存であり、現行予算の CSPM は既定 OFF・管
 | Foundry の認証・IP 制限 | 03_network_acls.bicep の目標値＋S5 の更新 | 更新未実施 |
 | App Insights | 06_diagnostics.bicep＋S6 | Entra ID の接続が要確認 |
 
-> **Note** 要確認: 固定版 41 の Preview API、初期公開期間、後追い更新と Deny の競合、APIM 社内 IP 限定とサービス発信の両立は未解決です。vendor を変更せず停止点を維持します。
+> **Note** 要確認: 固定版 41 の Preview API、初期公開期間、後追い更新と Deny の競合は未解決です。D14 の通信方針は採用済みですが、任意の IaC は未対応で、ツール API の認可・本人経路の適用確認も未完了です。vendor を変更せず停止点を維持します。
 
 ---
 

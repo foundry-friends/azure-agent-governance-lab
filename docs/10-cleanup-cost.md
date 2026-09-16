@@ -17,7 +17,7 @@
 ## 10.2. 削除前の確認
 
 1. 第1章の予算通知と終了時刻を確認します。
-2. 当日に作成したリソース一覧を照合します。
+2. 当日に作成したリソース一覧を照合します。D14 の専用 VNet・統合サブネットと Foundry の VNet 規則も対象に含めます。
 3. 必要な合成証跡を保存します。
 4. 公開用の証跡から実 ID・本文・内部情報を除きます。
 
@@ -54,7 +54,7 @@ bash scripts/teardown.sh --status
 実行結果の確認ポイント: RG が存在する場合は終了コード 2 です。
 
 5. Key Vault と Foundry の soft-delete / purge 状態を確認します。
-6. Cosmos・Storage・Search・APIM・App Service の残存を確認します。
+6. Cosmos・Storage・Search・APIM・App Service・App Service プラン・専用 VNet の残存を確認します。
 7. RG 外の監視資産と Policy 割当を確認します。
 8. 第9章で変更した Defender プランの復帰を確認します。
 9. 翌日以降の [コスト分析] でサービス別・RG 別・サブスクリプション全体の費用を確認します。
@@ -120,6 +120,8 @@ bash scripts/cost_check.sh
 
 2026-09-15 の見積り v3 の既定値です。Japan East、原則 32h/月の検証、CSPM は既定 OFF です。No.8 と No.12 は常時／検証日の切替で、二重計上しません。No.6 は 第1章/第6章の共通費です。見積り保証ではありません。
 
+D14 の VNet／サブネットは削除対象です。VNet 統合・従来型サービス エンドポイントの機能追加料金はありませんが、アプリ・APIM 等の既存課金は続きます。Excel v3 の資産明細への追記は未実施です。
+
 既定で通常月 $57.56／3 か月 $164.67／12 か月 $682.68、CSPM ON は月 $108.66、AI Search 常時は月 $150.39 です。第10章 自体の追加明細はありません。原則 32h/月という見積り条件と初回・再現の作業時間は別です。実際の稼働時間・削除待ち・無料枠で費用は変わります。
 
 ## 10.8. 本番との差
@@ -127,6 +129,8 @@ bash scripts/cost_check.sh
 常時稼働の参考は [付録 B](92-appendix-production-diff.md) に分けます。
 
 ### 出典
+
+- 出典: [App Service VNet 統合](https://learn.microsoft.com/ja-jp/azure/app-service/overview-vnet-integration)（取得日 2026-09-16。D14 に伴う整合修正の根拠）
 
 この章は既存手順の実行順と判定条件を整理したものです。機能の詳細は各作成章の出典を参照します。
 

@@ -2,168 +2,268 @@
 
 進め方: README の第0〜10章を順番に実施します。第7章の完了条件を満たしてから進めます。
 
-> **Note** 状態: 試験手順ドラフト（第7章のアプリ待ち）（Azure 未実行）。構成変更日 2026-09-15。
+> **Note** 状態: 操作ドラフト（Learn 2026-09 時点の記述に基づく・Azure 未実行）。2026-09-16 改訂。第7章のアプリ実装・本人認証・配布・到達確認が済むまでは、本章の動作試験を開始しません。
 
 > **補足** この章では環境を削除しません。通常の削除は最後の第10章です。中断して片付ける場合だけ、第10章へ進みます。
 
 ## 8.1. 目的
 
-同じ環境・エージェント・合成入力で、許可される操作と拒否される操作を比較します。必要なリソースとアプリはすでに作成済みです。
+同じ環境・エージェント・合成入力で、許可される操作と拒否される操作を比較します。対象は C02／C03／C08／C09 と、その証跡を確認する C04／C05 です。第4・7章の正常応答 C01 を比較の基準にします。
 
 ### なぜこの作業が必要か
 
-設定画面に期待する値が表示されていても、実際の呼び出しが意図どおり許可・拒否されるとは限りません。例えば、追加の権限を継承しているユーザーを使うと、呼び出し専用ロールだけの効果を確かめられません。
+設定値が正しくても、実際の呼び出しが意図どおり許可・拒否されるとは限りません。例えば、権限を別のスコープから継承しているユーザーでは、呼び出し専用ロールだけの効果を確認できません。
 
-この章では、同じ操作を基準にしてユーザー・認証・接続元の条件を比較します。「許可した操作は成功する」「許可していない操作は拒否される」の両方を確認し、どの層が拒否したのかを証跡と合わせて記録します。これにより、単に接続できなかった結果を統制の成功と取り違えないようにします。
+正常な呼び出しを基準にして、主体・認証・接続元の条件を一つずつ変えます。失敗時には拒否した層を特定し、通信障害やログイン失敗を RBAC・IP 制限の成功と取り違えないようにします。
 
 ## 8.2. 前提
 
-第7章の正常呼び出しと経由ログを確認済みです。試験ユーザー・許可 IP／許可外 IP・認証経路を記録します。ここで構築の不足が分かった場合は試験を Pending とし、完成した一周と扱いません。
+### 開始前の確認
+
+| 確認するもの | 開始できる条件 |
+|---|---|
+| 第7章の完了記録 | 本人トークンによる App Service → Foundry の正常応答があり、アプリのサービス ID への置換で成功させていない |
+| VNet 経路 | 統合サブネット・サービス エンドポイント・Foundry の VNet 規則と、対象プロジェクト API の到達結果が揃っている |
+| データ基盤 | 第4章 G1〜G3 の判定があり、Agent Service → Cosmos / Storage / Search の到達が未解決でない |
+| 試験ユーザー | 第5章で用意した User・Consumer・無権限の主体を区別でき、継承・グループ・一時昇格を含む有効な権限を照合できる |
+| 合成入力 | [合成プロンプト集](../assets/prompts/README.md)の正常入力を固定し、モデル・エージェント・アプリの版を揃えている |
+| 証跡 | 第6章の診断先と、非公開の `evidence/` に保存する担当者・Run・時刻の記録方法が決まっている |
+| 個別の未確定項目 | ツール認証・quota・未認証要求・本文監査の実施可否を分け、未確定ならその行を Pending とする |
+
+第7章の必須条件が欠ける場合は構築工程で止めます。本文監査など、前章から明示的に保留した項目がある場合は、その行を保留したまま実施可能な試験を進めます。
+
+### 実行場所と記録方法
+
+- GUI は Azure portal／Foundry portal、データ面の正常応答は社内 PC のブラウザで確認します。
+- 本章の Bash は Cloud Shell での設定照会・補助スクリプトだけです。第7章の社内 PC の CLI 例外は ZIP 配布とその認証・対象確認に限ります。
+- 未認証・別のサービス主体による要求は、対象・HTTP メソッド・認証方式を固定できる承認済みの試験経路が用意できた場合だけ実施します。現時点ではその実装は未確定です。
+- トークン・キー・Cookie を手動でコピーして証跡に残しません。試験のために IP 制限・認証・条件付きアクセスを解除しません。
+
+各試験は「許可条件で成功 → 条件を一つ変えて拒否 → 許可条件で再び成功」の順で行います。再試行・キャッシュ・過去の会話の影響を避けるため、毎回新しい会話を使います。基準の成功がない場合は、比較試験を Pass にしません。
 
 ## 8.3. 権限と認証を試す
 
-### C02：主体別に同じ操作を比較する
+### C02：ユーザー別の権限を比較する
 
-C02 は「ユーザー別の権限確認」の検証番号です。
+1. 第5章の割当記録で、対象プロジェクトと各ユーザーの権限を照合します。
+2. Azure portal の対象スコープの [アクセス制御 (IAM)] → [アクセスの確認] で、表示可能な直接・継承割当を確認します。
+3. プロジェクトの割当が GUI で確認できない場合は、第5章の Cloud Shell で取得したプロジェクトスコープの記録を照合します。
+4. 管理者とは別のブラウザプロファイルで、Foundry User の試験ユーザーとしてアプリにサインインします。
+5. 固定した正常入力を送信します。
+6. Consumer、無権限ユーザーの順に、別のプロファイルから同じアプリ・入力を試します。
+7. Foundry User に戻し、正常応答を再確認します。
 
-1. 管理者と別のブラウザプロファイルで検証用ユーザーにサインインします。
-2. 第4章の同じエージェントに、合成入力「検証です。こんにちはと答えてください」を送ります。
-3. 対象 project の [エージェント] で [エージェントの作成] を選択します。
-4. 試験専用の名前と承認モデルを指定して保存を試します。
-5. 作成できた検証用エージェントの指示に「短く答えてください」を追加して保存を試します。
-6. 各操作の実結果を下表と比較します。
+RG の割当画面だけでは子のプロジェクトへの割当を網羅できません。試験中に既存の管理者権限を外すのではなく、余分な権限のない検証用主体を使います。
 
-| 主体 | 呼び出し | 作成・編集 | 判定上の注意 |
+| 主体 | 本人経路での呼び出し | エージェント作成・編集 | 判定上の注意 |
 |---|---|---|---|
-| Foundry User | 成功 | 成功 | モデルのデプロイや公開の権限とは別 |
-| Foundry Agent Consumer | 成功 | 拒否 | 呼び出しは本人トークンを使うアプリ経路で確認 |
-| 無権限ユーザー | 拒否 | 拒否 | サインイン／IP 拒否だけなら RBAC 試験は Pending |
+| Foundry User | 成功 | 成功 | モデルのデプロイや公開の権限とは分ける |
+| Foundry Agent Consumer | 成功 | 拒否 | APIM のサービス主体の成功では代用しない |
+| 無権限ユーザー | 拒否 | 拒否 | Easy Auth・条件付きアクセス・IP 制限で先に拒否された場合、Foundry RBAC は Pending |
 
-画面に作成ボタンがない場合は「GUI 操作不可」と記録します。バックエンドの作成・編集拒否は、その操作を送れる検証経路がない限り Pending にします。別主体で作ったエージェントを編集できるかは所有関係も影響するため、新規作成と分けて記録します。
+作成・編集は Foundry portal の対象プロジェクトの [エージェント] で試します。
 
-### C03 の照合値
+1. Foundry User で [エージェントの作成] を選びます。
+2. 試験用の名前 `<試験用エージェント名>` と第4章の承認モデルを指定します。
+3. 保存を試します。
+4. 作成できた試験用エージェントの指示へ「短く答えてください」を追加します。
+5. 変更の保存を試します。
+6. Consumer と無権限ユーザーでも、画面で可能な同じ作成操作を試します。
+7. その主体で試験用エージェントを開ける場合は、編集の保存を試します。
 
-C03 は「認証方式の確認」の検証番号です。
+作成ボタンがない結果は「GUI 操作不可」と記録します。バックエンドへの作成・編集要求を送れなければ、その API 拒否は Pending です。編集は対象の所有関係も記録し、作成拒否とは別に判定します。試験用エージェントは第10章の片付け対象として記録します。
+
+### C03：認証設定を照合する
+
+Azure portal で第3・4章の設定を開き、対象と値を確認します。キーを表示・取得しません。
 
 | 対象 | 期待する設定 |
 |---|---|
 | Storage | `allowSharedKeyAccess=false` |
 | Cosmos DB・Search・Foundry account | `disableLocalAuth=true` |
 
-キーは表示・取得しません。設定が null の場合は無効化済みと扱いません。
+Cloud Shell で、各対象の ID を一つずつ指定します。
 
 ```bash
 az resource show --ids "<target-resource-id>" --query '{type:type,disableLocalAuth:properties.disableLocalAuth,allowSharedKeyAccess:properties.allowSharedKeyAccess}' --output json
 ```
-実行結果の確認ポイント: リソース種別に対応する上表の値を確認します。
+実行結果の確認ポイント: リソース種別に対応する上表のプロパティが期待値であり、対象プロパティが null／欠落していないことを確認します。
 
-### C03：設定・認証成功・未認証拒否を分ける
+上表に関係しないプロパティの null は判定対象外です。対象プロパティを取得できなければ、API の表示差か設定不足かを切り分けるまで Pending にします。
 
-| 試験 | 期待 | 実施できない場合 |
-|---|---|---|
-| 対象ごとの設定照合 | 下表の無効設定と一致 | 対象作成前／設定手段未確定は Pending |
-| Entra ID による呼び出し | 権限ありの主体で成功 | 正常な呼び出し経路が利用できなければ Pending |
-| 認証情報なしの呼び出し | 対象エンドポイントで拒否 | アプリのログイン画面だけ確認した場合は Foundry の試験は Pending |
+### C03：認証成功と未認証拒否を比較する
 
-認証なし試験は 第7章で確定する同一操作・同一エンドポイントの検証経路を使います。URL をブラウザで開いた結果だけでは、認証拒否と HTTP メソッド違いを区別できません。キーを使った拒否試験は本手順に含めません。
+| 対象 | 許可条件 | 拒否条件 | 記録する結果 |
+|---|---|---|---|
+| アプリ入口 | 社内 IP・サインイン済み | 同じ社内 IP・未サインインの別プロファイル | 認証要求または拒否。Foundry の拒否とは別 |
+| Foundry | 許可された本人・同じ API 操作 | 同じ送信経路・操作で認証情報なし | 対象 API の認証拒否と相関情報 |
+| データ基盤 | 第4章の許可サービス主体の操作 | 同じ対象・操作で認証情報なし | サービスごとの認証拒否。経路未用意なら Pending |
 
-Cloud Shell の `.env` に記録済みの検証対象の `AZURE_SUBSCRIPTION_ID`、`AZURE_TENANT_ID`、`AZURE_RESOURCE_GROUP`、`FOUNDRY_ACCOUNT_RESOURCE_ID` を照合してから実行します。
+1. 許可条件の正常応答と時刻を記録します。
+2. 実施可能な拒否条件を一つ適用します。
+3. HTTP 結果・拒否した層・同時刻の証跡を記録します。
+4. 許可条件に戻し、正常応答を再確認します。
+
+URL をブラウザで開いただけでは、認証拒否とメソッド違いを区別できません。アプリのログイン画面も Foundry の未認証拒否の証拠にはなりません。未認証要求を送れる経路がなければ、設定照合だけ完了として動作試験を Pending にします。キー認証の拒否試験は行いません。
+
+### 設定照会用スクリプト (任意)
+
+Cloud Shell にリポジトリと非公開の `.env` を用意した場合だけ使います。`AZURE_SUBSCRIPTION_ID`、`AZURE_TENANT_ID`、`AZURE_RESOURCE_GROUP`、`FOUNDRY_ACCOUNT_RESOURCE_ID` を今回の対象と照合します。
 
 ```bash
 bash scripts/verify.sh --section 2
 ```
-実行結果の確認ポイント: account スコープのロールと認証設定を収集し、未実施の試験を Pending と表示します。設定不足や照会失敗はエラーになり、設定収集完了時の終了コード 2 も試験合格を意味しません。
+実行結果の確認ポイント: account スコープのロール・認証設定の収集と Pending 表示を確認し、終了コード 2 を動作試験やプロジェクト RBAC の合格と扱いません。
 
-[確認項目](../checks/README.md) ごとに、Run・手順番号・主体の区別・入力・期待・実結果・拒否した層・Pass／Fail／Pending を非公開の `evidence/` に記録します。未実施行を残したまま C02／C03 全体を Pass にしません。
+設定不足や照会失敗はエラーとして切り分けます。旧 CLI 番号 2 は本章番号ではありません。
 
-## 8.4. ネットワークとゲートウェイを試す
+## 8.4. ネットワーク・ツール・証跡を確認する
 
-### C08：IP 制限と送信先
+### C08：人の入口の IP 制限
 
-C08 は「ネットワーク境界・送信先の確認」の検証番号です。
+1. 許可された社内回線から、C02 で成功した同じユーザーでアプリへ正常入力を送ります。
+2. 組織で試験を許可した社外回線へ接続元だけを変更します。
+3. 同じアプリとユーザーで正常入力を試します。
+4. App Service のアクセス制限と結果を照合します。
+5. 社内回線へ戻し、正常応答を再確認します。
 
-C08 を次の 4 結果に分けます。
+許可外 IP からの拒否が期待結果です。社外試験用の回線が用意できなければ Pending にします。Entra のサインインログに条件付きアクセスの拒否がある場合は、その事実を別に記録し、App Service の IP 制限を確認したとは扱いません。403 だけでは拒否した層を確定しません。
 
-1. 許可 IP から Entra ID で同じ合成入力を送信します。
-2. 許可外 IP から同等の権限で送信し、ネットワーク拒否を確認します。
-3. IP 制限下で agent service が Cosmos / Storage / Search に到達することを確認します。
-4. 用意済みの検証経路で未許可 MCP が失敗し、APIM 経由の許可先が成功することを確認します。
+### C08：サービス間の経路
 
-Entra のサインイン拒否だけでリソース側 IP 制限の確認を代用しません。拒否した層を特定できなければ Pending です。
+| 経路 | 操作と確認 | 判定の限界 |
+|---|---|---|
+| App Service → Foundry | 第7章の VNet 統合・サービス エンドポイント・Foundry 規則を照合し、同じプロジェクト API の正常応答と突き合わせる | 設定と許可経路の成功を記録。許可外送信元の拒否まで証明したとは扱わない |
+| Foundry の許可外送信元 | 有効な本人認証・同一 API 操作を送れる承認済みの別経路がある場合だけ比較する | 試験経路がない場合は拒否試験を Pending。アプリの VNet を解除して試さない |
+| Agent Service → Cosmos / Storage / Search | 第4章 G1〜G3 の対象別の到達結果を確認し、今回の正常応答と照合する | App Service の VNet 統合だけでこの経路を解決したとは扱わない |
+| Agent Service → ツール用 APIM | 登録済みの架空在庫ツール入力を送り、APIM の対象 API・操作・時刻とバックエンド成功を照合する | ツール API はネットワーク上は公開し、Entra の許可主体で保護する。社内 IP のみの制限を期待しない |
+| ツール API の拒否 | 同じ操作について未認証と許可外主体を分け、承認済み試験経路から比較する | tenant・audience・許可主体のどの検証で拒否したか記録。経路未確定なら Pending |
+| 未許可ツール | [合成プロンプト集](../assets/prompts/README.md)の未許可先を試し、登録制限・認可・APIM のどこが拒否したか確認する | DNS 失敗やモデルの自主的拒否だけなら強制点の証明は Pending |
+
+ツール API の ID による拒否と、アプリ入口の IP 制限は別判定です。未許可ツールの強制点が確認できても、送信ネットワーク全体の遮断を確認したとは扱いません。公開へ緩めた経路で成功した場合は例外として記録し、制限下の到達を Pass にしません。
+
+補助 CLI の現状を確認する場合だけ使います。
 
 ```bash
 bash scripts/verify.sh --section 3
 ```
-実行結果の確認ポイント: 設定収集または案内のみで、未完了は終了コード 2 です。
+実行結果の確認ポイント: 現行スクリプトは Pending の案内と終了コード 2 を返すだけで、ネットワーク設定の自動収集や動作試験を行いません。
 
-[確認項目](../checks/README.md) ごとに実施日・Run・入力・期待結果・実結果・Pass / Fail / Pending を非公開の `evidence/` に記録します。未実施は Pending です。
+### C09：ツールの経由ログと quota
 
-### C09：経由・quota・ガードレール
+チャット送信回数とツール API の呼び出し回数は一致しません。接続初期化・再試行・複数ツール呼び出しもあるため、正常入力を連投して上限試験の代わりにしません。
 
-C09 は「ゲートウェイ・ガードレールの確認」の検証番号です。
+| 事前に固定するもの | 記録する値 |
+|---|---|
+| 対象 | 第7章で確定した検証用ツール API と操作 |
+| 認証 | 正常応答済みの許可サービス主体 |
+| ポリシー | `quota-by-key`、適用スコープ、変更前の設定 |
+| 集計 | 検証済み主体から作るキー、上限 N、期間、期間内の既存カウント |
+| 試験の上限 | N を小さく設定した場合の最大要求数、停止時刻、再試行なし |
+| 復旧 | 元のポリシー値と復旧確認担当 |
 
-C09: APIM 経由ログ、正常／拒否入力、quota 超過 403（レート制限とは別）、ガードレール適用を確認します。C08: 許可ツール成功、未許可ツール失敗、直接呼び出しの迂回防止を確認します。
+> **Note** 要確認: 第7章のツール実体・認証・quota の具体値と、要求数を制御できる試験経路が未確定です。確定前は以下を実行せず Pending にします。通常の会話から MCP の要求数を正確に制御できるとは扱いません。
+
+1. Azure portal の対象 APIM で、第7章の対象 API のポリシーを開きます。
+2. 変更前の quota 設定を非公開の証跡に記録します。
+3. 試験用に確定した小さな上限と期間を設定します。
+4. 新しい集計期間であることと、別の試験が同じキーを使っていないことを確認します。
+5. 決めた最大要求数の範囲内で、無害な同じツール操作を順番に実行します。
+6. 上限内の成功と超過時の応答を、APIM ログ・適用ポリシーと照合します。
+7. 変更前のポリシー値に戻します。
+8. カウンターの期間終了など、許可条件が回復してから正常応答を確認します。
+
+`quota-by-key` の `renewal-period` は最小 300 秒です。上限到達前に期間が切り替わった場合や、予期しない追加呼び出しがあった場合は、その回を合格にせず原因を記録します。期待する超過応答は 403 ですが、認証・認可の 403 と区別します。429 は別のレート制限として記録します。想定した拒否が出なくても、決めた要求数を超えて呼び続けません。ポリシー値を戻しただけで既存カウンターがリセットされたとは扱いません。
+
+サービス基盤の再起動時には、上限到達後も短時間要求が処理される可能性があると Learn に記載されています。想定外の成功はその時刻・要求数と合わせて切り分け、即時かつ厳密な課金停止の保証には使いません。
+
+この試験はツール呼び出しの quota です。本人経路・内部モデル呼び出しのトークン量や総費用を制限した証明にはしません。
+
+### C09：Foundry 側のガードレール
+
+1. 第4章の承認モデルと適用済みのフィルター／ポリシーを照合します。
+2. 正常入力で応答を確認します。
+3. [合成プロンプト集](../assets/prompts/README.md)が参照する公開例のうち、対象モデルの GA 機能に対応すると確認できた例を一つ試します。
+4. 応答と、利用可能なフィルター結果・拒否メタデータを記録します。
+5. 正常入力へ戻し、正常応答を再確認します。
+
+モデルが文章で断っただけの結果と、サービス側フィルターの適用を区別します。対象の GA 機能や結果の取得方法が確定しなければ Pending です。classic 向け資料の画面操作を現行 Foundry にそのまま当てはめません。エージェント向け Preview 介入点は対象外とし、存在しない RAI ID による fail open の再現は本編では行いません。
 
 ```bash
 bash scripts/verify.sh --section 7
 ```
-実行結果の確認ポイント: 設定収集または案内のみで、未完了は終了コード 2 です。
+実行結果の確認ポイント: 現行スクリプトは Pending の案内と終了コード 2 を返すだけで、quota 超過やガードレールを自動試験しません。
 
-[確認項目](../checks/README.md) ごとに実施日・Run・入力・期待結果・実結果・Pass / Fail / Pending を非公開の `evidence/` に記録します。未実施は Pending です。
+### C04／C05：証跡を突き合わせる
 
-### C04／C05：試験の証跡を見る
+1. Azure portal で第6章の Log Analytics ワークスペースを開きます。
+2. [ログ] で試験時刻を含む範囲を指定します。
+3. 第6章の診断設定に対応するテーブルで、対象リソースのイベントを確認します。
+4. ツール経路は、リソース固有テーブルを選択済みの場合に `ApiManagementGatewayLogs` の `TimeGenerated`・`ApiId`・`OperationId`・`CorrelationId`・`ResponseCode`・`BackendResponseCode` を照合します。
+5. サインインで拒否された試験は、Entra のサインインログと適用された条件付きアクセスの結果を確認します。
+6. 要求がどこまで届いたかを試験記録へ追記します。
 
-C04 は「診断ログの到着確認」、C05 は「本文ログと閲覧制御の確認」の検証番号です。
+入口で拒否された要求に、後段 Foundry／APIM のログがないこと自体は異常ではありません。APIM の成功ログも、本人の Foundry 呼び出しを記録したものではありません。ログの未到着・対象違い・拒否を区別します。
 
-各試験の時刻で Log Analytics のログを確認します。診断ログの到着、本文トレース、本文の閲覧制御を分け、結果を記録します。ネットワーク拒否・Entra のサインイン拒否・アプリの拒否・Foundry の認可拒否を区別します。
+C04 の診断イベント到着と、C05 の本文トレース・閲覧制御は分けます。第6章で保留した C05 は本章でも保留し、本文を取得できない結果を本文監査の成功にしません。認証情報や不要なプロンプト本文を採取しません。
 
 ## 8.5. うまくいかない場合
 
-1. 対象・主体・同一入力・時刻を照合します。
-2. 拒否した層が不明なら Pending にします。
-3. 前提設定が欠けていた場合は作業記録に残し、試験合格とはしません。
+| 順序 | 操作 |
+|---|---|
+| 切り分け | 主体・継承権限・送信元・対象 API・操作・時刻を照合し、入口／認証／Foundry RBAC／ツール／バックエンドのどこで止まったか確認する |
+| 代替 | GUI で不足する設定は既存の Cloud Shell 照会で確認する。動作要求を送れない場合は、その行を Pending とする |
+| 記録 | 期待と実際、拒否した層、証跡、未確定事項、必要な試験経路を非公開の `evidence/` に残す |
+| 元に戻す | quota の試験値を変更前に戻し、社内回線・許可主体・正常入力で再確認する。復旧できなければ次の試験を止める |
 
-社内 IP 制限下の BYO 到達問題は初回応答の章で切り分け済みの記録を使います。例外で公開した経路を、IP 制限が効いた成功例に数えません。
+IP 制限や Entra 条件付きアクセスを緩めて試験を続けません。BYO 到達の問題は第4章の切り分け記録と照合します。期待する拒否が実際には通った場合は Fail、試験経路や根拠が足りず評価できない場合は Pending とします。
 
 ## 8.6. 完了条件と次の操作
 
-C01〜C05・C08・C09 の実施した行について、期待・実結果・判定・未実施理由が揃ったら第9章へ進みます。失敗や Pending を隠して総合合格にしません。
+各 C 番号の中の試験行ごとに記録します。
+
+| 記録項目 | 内容 |
+|---|---|
+| 識別 | 実施日・時刻とタイムゾーン、Run、章・手順、C 番号、試験行 |
+| 条件 | 対象の別名、主体の役割、アプリ・モデル・エージェントの版、合成入力の識別名、変更した条件 |
+| 結果 | 期待、実結果、HTTP 結果、拒否した層、Pass／Fail／Pending |
+| 証跡 | 非公開ログの参照先と相関情報。秘密値は含めない |
+| 続き | 未実施理由、解決する条件、担当、設定復旧と正常再確認の結果 |
+
+[確認項目](../checks/README.md)と照合し、未実施行を残した C 番号を全体 Pass にしません。C01 の正常応答を再確認し、実施可能な試験・保留理由・復旧結果が揃ったら第9章へ進みます。認可されない操作の成功など、環境の保護に関わる Fail や復旧失敗が残る場合は、修正と再試験まで進みません。第6章からの C05 など明示した保留は引き継ぎます。「第8章の記録完了」と「全項目の合格」は区別します。
 
 ## 8.7. 費用
 
-既存環境の利用と合成リクエストの費用です。quota 試験は少量の入力と検証用の低い上限で設計します。
+新しい常設リソースは追加しません。既存環境の稼働・ログ・少量の合成リクエストを使います。
+
+| 見積り Excel v3 明細 No | 対象 | 参考月額 USD |
+|---|---|---:|
+| 6 | Log Analytics / Analytics Logs 取り込み | 10.020000 |
+| 11 | API Management / Basic v2 | 6.575360 |
+| 13 | App Service / Linux B1 | 0.608000 |
+| 14 | gpt-5 mini / Global Standard 入力 | 9.000000 |
+| 15 | gpt-5 mini / Global Standard 出力 | 10.800000 |
+
+[README の費用の目安](../README.md)にある 2026-09-15 の見積り v3、Japan East、原則 32h/月の参考値です。本章の追加費用や現在価格を示す値ではなく、前章の共通費に重ねて加算しません。実際の要求数・入出力・ログ量を記録し、quota 試験は事前に決めた回数で止めます。予算通知とツール quota をモデル費用全体のハードリミットとは扱いません。
 
 ## 8.8. 本番との差
 
-一回の合成試験は継続監視・運用受入の代わりにはなりません。
+本番 Baseline の閉域・WAF・APIM Standard v2 等の構成は[付録 B](92-appendix-production-diff.md)で扱います。本章で確認する社内 IP・VNet サービス エンドポイント・ツール ID の制御だけでは、それらの本番境界を検証したことにはなりません。
 
 ### 出典
 
-- 出典: [Foundry の RBAC](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/rbac-foundry)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault を portal で作成](https://learn.microsoft.com/ja-jp/azure/key-vault/general/quick-create-portal)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Azure ロールの割当](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/role-assignments-portal)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault の RBAC](https://learn.microsoft.com/ja-jp/azure/key-vault/general/rbac-guide)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault のネットワーク](https://learn.microsoft.com/ja-jp/azure/key-vault/general/network-security)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault の論理削除](https://learn.microsoft.com/ja-jp/azure/key-vault/general/soft-delete-overview)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Standard setup](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/standard-agent-setup)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [BYO リソース](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/use-your-own-resources)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Search のロール認証](https://learn.microsoft.com/ja-jp/azure/search/search-security-enable-roles)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Storage 共有キーの無効化](https://learn.microsoft.com/ja-jp/azure/storage/common/shared-key-authorization-prevent)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Cosmos DB の RBAC とキー無効化](https://learn.microsoft.com/ja-jp/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Foundry Tools のローカル認証無効化](https://learn.microsoft.com/ja-jp/azure/ai-services/disable-local-auth)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [条件付きアクセスの適用ログ](https://learn.microsoft.com/ja-jp/entra/identity/monitoring-health/how-to-view-applied-conditional-access-policies)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [継続的アクセス評価](https://learn.microsoft.com/ja-jp/entra/identity/conditional-access/concept-continuous-access-evaluation)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Easy Auth の OAuth トークン](https://learn.microsoft.com/ja-jp/azure/app-service/configure-authentication-oauth-tokens)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [APIM の Managed Identity 認証](https://learn.microsoft.com/ja-jp/azure/api-management/authentication-managed-identity-policy)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [az keyvault](https://learn.microsoft.com/ja-jp/cli/azure/keyvault)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [az role assignment](https://learn.microsoft.com/ja-jp/cli/azure/role/assignment)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [az resource](https://learn.microsoft.com/ja-jp/cli/azure/resource)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [公式テンプレート 41（固定コミット）](https://github.com/microsoft-foundry/foundry-samples/tree/58e4127567f7e9afcf0145d874df890284ca5faf/infrastructure/infrastructure-setup-bicep/41-standard-agent-setup)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Cosmos ARM 定義](https://learn.microsoft.com/en-us/azure/templates/microsoft.documentdb/2024-11-15/databaseaccounts)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Search ARM 定義](https://learn.microsoft.com/en-us/azure/templates/microsoft.search/2025-05-01/searchservices)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Foundry ARM 定義](https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/2025-06-01/accounts)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [公式 ip-filter](https://learn.microsoft.com/ja-jp/azure/api-management/ip-filter-policy)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [トークン制限](https://learn.microsoft.com/en-us/azure/api-management/llm-token-limit-policy)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
+以下は取得日 2026-09-16 です。C03 の設定根拠は第3・4章、VNet・ツール設定の根拠は第7章の出典も参照します。
+
+- 出典: [Foundry の RBAC](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/rbac-foundry)（取得日 2026-09-16）
+- 出典: [Azure RBAC のアクセス確認](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/check-access)（取得日 2026-09-16）
+- 出典: [az resource](https://learn.microsoft.com/en-us/cli/azure/resource?view=azure-cli-latest)（取得日 2026-09-16）
+- 出典: [App Service のアクセス制限](https://learn.microsoft.com/ja-jp/azure/app-service/app-service-ip-restrictions)（取得日 2026-09-16）
+- 出典: [Entra トークン検証](https://learn.microsoft.com/ja-jp/azure/api-management/validate-azure-ad-token-policy)（取得日 2026-09-16）
+- 出典: [quota-by-key](https://learn.microsoft.com/ja-jp/azure/api-management/quota-by-key-policy)（取得日 2026-09-16）
+- 出典: [APIM Gateway ログの列](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/tables/apimanagementgatewaylogs)（取得日 2026-09-16）
+- 出典: [条件付きアクセスの適用ログ](https://learn.microsoft.com/ja-jp/entra/identity/monitoring-health/how-to-view-applied-conditional-access-policies)（取得日 2026-09-16）
+- 出典: [モデルのコンテンツフィルター（classic 向け・概念の参照）](https://learn.microsoft.com/en-us/azure/foundry-classic/foundry-models/concepts/content-filter)（取得日 2026-09-16）
+- 出典: [Prompt Shields の公開例](https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/jailbreak-detection)（取得日 2026-09-16）
 
 ---
 

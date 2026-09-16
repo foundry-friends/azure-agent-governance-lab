@@ -66,7 +66,9 @@
 
 | 方針 | 適用 |
 |---|---|
-| 公開エンドポイントの入口 | 社内 IP に限定。認証は Entra ID |
+| 人の入口 | 社内 IP に限定。認証は Entra ID |
+| App Service → Foundry | 第7章で送信 VNet 統合＋サービス エンドポイントを追加。Foundry は社内 IP 規則と統合サブネットの VNet 規則を併用 |
+| ツール用 APIM | ネットワーク上は公開し、Entra の許可主体で制限。社内 IP のみの規則をツール API 全体に適用しない |
 | エージェントのツール | 第4章ではツールなし。第7章で許可先だけを追加 |
 | サービス間通信 | 社内 PC の IP と異なるため、各経路を確認 |
 | 変更できない前提 | Agent 365 なし、既存の条件付きアクセスを変更しない |
@@ -93,9 +95,11 @@
 
 ## 0.8. 対象外
 
-閉域接続・Private Endpoint・VNet injection・Azure Firewall・WAF・Bastion は作りません。Managed VNet と Preview 機能の操作も対象外です。本番向けの差は [付録 B](92-appendix-production-diff.md) にまとめます。
+第7章で App Service の送信 VNet 統合と従来型サービス エンドポイントを作ります。Private Endpoint・VNet injection・VPN・Azure Firewall・WAF・Bastion・NAT Gateway は作りません。Managed VNet と Preview 機能の操作も対象外です。本番向けの差は [付録 B](92-appendix-production-diff.md) にまとめます。
 
 ### 出典
+
+- 出典: [App Service VNet 統合](https://learn.microsoft.com/ja-jp/azure/app-service/overview-vnet-integration)（取得日 2026-09-16。D14 に伴う整合修正の根拠）
 
 - 出典: [Foundry の RBAC](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/rbac-foundry)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
 - 出典: [Key Vault を portal で作成](https://learn.microsoft.com/ja-jp/azure/key-vault/general/quick-create-portal)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）

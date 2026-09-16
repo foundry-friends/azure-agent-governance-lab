@@ -42,6 +42,8 @@
 
 > **Note** 要確認: [定義例](../assets/policy/unrestricted-network.example.json) と [認証例](../assets/policy/local-auth.example.json) は Foundry のみの骨組みです。alias・型別の条件・空配列の意味・対応 effect を確認し、他の 6 リソースに対応したとは扱いません。Audit と `DoNotEnforce` は同義ではありません。41 の初期設定や データ接続の復旧と Deny が競合する点も未解決です。
 
+> **補足** D14 では Foundry の社内 IP 規則＋統合サブネットの VNet 規則を許可構成として照合します。ツール用 APIM はネットワーク上は公開し Entra の許可主体で制限する別方式です。Foundry 向けの IP 規則の条件を APIM に流用せず、採用構成を誤って拒否しないことを Audit で確認してから Deny を検討します。
+
 ### Defender for AI Services を確認する
 
 1. [Defender for Cloud] の [環境設定] で対象サブスクリプションを選択します。
