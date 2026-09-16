@@ -1,4 +1,4 @@
-# 設計判断 D1〜D13
+# 設計判断 D1〜D14
 
 通常手順ではなく設計の参考資料です。実行順は [README](../README.md) が正です。
 
@@ -20,6 +20,7 @@
 | D12 | データ基盤は BYO | GUI で目標 SKU・IP 制限・ローカル認証無効を設定し、作成済みの 3 ID を接続に使います。Bicep は任意の再現資料です。41 の新規作成は SKU・認証が固定です。 | 本番は負荷・復旧・閉域要件を別途設計します。 |
 
 | D13 | 第0〜10章の一本道 | 同一環境を作り、統制を加え、最後に一度だけ削除します。再現確認は任意の二周目。 | 本番の変更・運用手順は別途設計します。 |
+| D14 | 本人の経路は App Service → Foundry 直接（App Service の VNet 統合＋サービス エンドポイントを Foundry の VNet 規則に登録）。APIM Basic v2 はツール経路に限定 | v2 レベルの APIM は送信 IP が固定できず、リージョン範囲の許可は Foundry の IP 規則上限 100 件を超えます。案 C は SKU 変更も追加費用も無く、両側の手順が Learn にあります（第7章 7.2 の比較）。仮想ネットワークの操作を学ぶ機会にもなります。 | 本番は Standard v2 以上の VNet 統合や閉域経路で本人の経路もゲートウェイに通し、quota・本文ログを一元化します。 |
 
 Standard setup の前提は RG の Owner または User Access Administrator（別途リソース作成権限が必要）です。Cosmos DB の Provisioned には 3000 RU/s 以上の要件を確認します。Serverless も検証対象です。Serverless に Provisioned の RU/s パラメータをそのまま設定しません。04_data.bicep は EnableServerless を設定します。実機での適合性は要確認です。capability host は作成後に変更できません。[Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)
 
