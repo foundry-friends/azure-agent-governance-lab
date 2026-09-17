@@ -36,8 +36,8 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 6 | [監視と監査を設定する](docs/06-monitoring.md) | 操作・本文の証跡を準備する | 操作ドラフト・本文のEntra取り込み／保護はPreviewのため保留 |
 | 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 案 C のGUI操作・アプリ仕様ドラフト済み。社内PCのCLI配布は暫定採用。本人認証／配布の実機成立／APIへのVNet規則の適用は未確定で作成前停止 |
 | 8 | [権限・認証・ネットワークの統制を試す](docs/08-governance-tests.md) | 許可／拒否・IP・quota を比較する | 操作ドラフト・判定／証跡／復旧を具体化・実行は第7章の完成待ち |
-| 9 | [Policy・脅威検知・評価を試す](docs/09-policy-defender-eval.md) | Audit → Deny、検知・評価を体験する | 構成ドラフト・設定詳細待ち |
-| 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | 最後に環境を削除し残存・費用を確認する | 構成ドラフト・GUI 詳細待ち |
+| 9 | [Policy・脅威検知・評価を試す](docs/09-policy-defender-eval.md) | Audit → Deny、検知・評価を体験する | GUI操作・判定ドラフト済み。Policyの安全な拒否試験／モデル制限／AI実検知／自動評価の到達は保留 |
+| 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | 最後に環境を削除し残存・費用を確認する | GUI操作・残存／費用判定ドラフト済み。削除・完全削除・課金の実機確認は未実施 |
 
 **開始: [第0章・事前確認と検証の進め方](docs/00-before-start.md)**
 
@@ -106,7 +106,7 @@ flowchart LR
 | CSPM ON（単独切替） | $108.66 / 月 |
 | AI Search 常時（単独切替） | $150.39 / 月 |
 
-2026-09-15 の見積り Excel v3 に基づきます。Japan East、原則 32h/月、CSPM 既定 OFF、累計には Defender AI の初月無料近似を含みます。見積り保証ではありません。明細 No.1〜19 は [S9](docs/10-cleanup-cost.md) を参照します。
+2026-09-15 の見積り Excel v3 に基づきます。Japan East、原則 32h/月、CSPM 既定 OFF、累計には Defender AI の初月無料近似を含みます。見積り保証ではありません。明細 No.1〜19 は [第10章](docs/10-cleanup-cost.md) を参照します。
 
 この金額は旧計画の稼働時間に基づく参考値で、今回の一周の費用を積算し直したものではありません。D14 は SKU を変更しません。App Service の VNet 統合と従来型サービス エンドポイントの機能追加料金はありませんが、サービス利用料・通信・ログ等まで無料になるわけではありません。Excel v3 の資産明細への VNet／サブネット追記は未実施です。
 
@@ -115,8 +115,8 @@ flowchart LR
 ## 参考資料（通常手順では開く必要はありません）
 
 - [設計判断](docs/90-design-decisions.md)
-- [本番との差](docs/92-appendix-production-diff.md)
-- [hosted agent の分岐 (任意)](docs/91-appendix-hosted-agent.md)
+- [本番との差](docs/92-appendix-production-diff.md) — 差分・受入観点・再見積りのドラフト済み。本番設計・構築は対象外。
+- [hosted agent の分岐 (任意)](docs/91-appendix-hosted-agent.md) — 採用条件・提供状態・試験設計のドラフト済み。実装・配布は前提確定待ち。
 - [IaC で再現する (任意)](infra/README.md) — 現行スクリプトは旧 Run/セクション番号を維持し、固定停止点があります。
 - [旧 Run 文書の扱い](docs/runs/run0.md)
 

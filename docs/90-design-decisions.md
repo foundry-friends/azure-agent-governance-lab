@@ -18,9 +18,8 @@
 | D10 | Defender CSPM＋AI Services | Azure 側の検知・態勢管理を検証します。共有サブスクリプションの他チームへの課金に注意します。 | 適用スコープと費用負担を合意し、Agent 365 が必要な機能を追加評価します。 |
 | D11 | エージェントの作り方は prompt agent を既定とし、hosted agent は付録 A | ポータルでノーコードの手順を短く再現し、コンテナ compute を本編へ持ち込みません。実行順は D13 へ改訂。日本語・Cloud Shell Bash を採用します。 | 作り込みが必要なら専用 identity、/24、private ACR、RAI fail open、egress controls、HITL、Purview middlewareを別途設計します。 |
 | D12 | データ基盤は BYO | GUI で目標 SKU・IP 制限・ローカル認証無効を設定し、作成済みの 3 ID を接続に使います。Bicep は任意の再現資料です。41 の新規作成は SKU・認証が固定です。 | 本番は負荷・復旧・閉域要件を別途設計します。 |
-
 | D13 | 第0〜10章の一本道 | 同一環境を作り、統制を加え、最後に一度だけ削除します。再現確認は任意の二周目。 | 本番の変更・運用手順は別途設計します。 |
-| D14 | 本人の経路は App Service → Foundry 直接（App Service の VNet 統合＋サービス エンドポイントを Foundry の VNet 規則に登録）。APIM Basic v2 はツール経路に限定 | v2 レベルの APIM は送信 IP が固定できず、リージョン範囲の許可は Foundry の IP 規則上限 100 件を超えます。案 C は SKU 変更も追加費用も無く、両側の手順が Learn にあります（第7章 7.2 の比較）。仮想ネットワークの操作を学ぶ機会にもなります。 | 本番は Standard v2 以上の VNet 統合や閉域経路で本人の経路もゲートウェイに通し、quota・本文ログを一元化します。 |
+| D14 | 本人の経路は App Service → Foundry 直接（App Service の VNet 統合＋サービス エンドポイントを Foundry の VNet 規則に登録）。APIM Basic v2 はツール経路に限定 | v2 レベルの APIM は送信 IP が固定できず、リージョン範囲の許可は Foundry の IP 規則上限 100 件を超えます。案 C は SKU 変更がなく、VNet 統合・サービス エンドポイント自体の追加料金はありません。サービス利用・通信・ログは別で、両側の手順が Learn にあります（第7章 7.2 の比較）。仮想ネットワークの操作を学ぶ機会にもなります。 | 本番は Standard v2 以上の VNet 統合や閉域経路で本人の経路もゲートウェイに通し、quota・本文ログを一元化します。 |
 
 Standard setup の前提は RG の Owner または User Access Administrator（別途リソース作成権限が必要）です。Cosmos DB の Provisioned には 3000 RU/s 以上の要件を確認します。Serverless も検証対象です。Serverless に Provisioned の RU/s パラメータをそのまま設定しません。04_data.bicep は EnableServerless を設定します。実機での適合性は要確認です。capability host は作成後に変更できません。[Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)
 
@@ -33,11 +32,15 @@ v2.1 は閉域接続なし・社内 IP 限定・送信最小です。Run 1 は�
 
 ## D11 の適用範囲
 
-prompt agent は publish 前に共有 agent identity、publish 後は専用 identity と RBAC 再割当を確認します。APIM 背後の BYO model は prompt agent 主線で検証します。hosted agent はコードから APIM を呼ぶ設計が別途必要です。prompt agent の MCP / OpenAPI 実行前承認と OBO の具体的な構成は要確認。Responses API 直接呼び出しは Foundry に agent リソースが残らない別方式、Copilot Studio は別製品です。
+2026-09-17 の提供条件の確認は [付録A](91-appendix-hosted-agent.md) を参照します。hosted のサービス、SDK、機能ごとの GA／Preview を区別します。D11 の /24・private ACR・egress controls 等は別設計の候補であり、本編の必須条件や今回の構築指示ではありません。旧 Preview の compute 管理を現行手順へ流用しません。
+
+prompt agent は publish 前に共有 agent identity、publish 後は専用 identity と RBAC 再割当を確認します。現行の D14 では APIM はツール経路に限定します。APIM 背後の BYO model は本編の検証対象に含めません。hosted agent はコードから APIM を呼ぶ設計が別途必要です。prompt agent の MCP / OpenAPI 実行前承認と OBO の具体的な構成は要確認。Responses API 直接呼び出しは Foundry に agent リソースが残らない別方式、Copilot Studio は別製品です。
 
 D10 は検討対象の保存であり、現行予算の CSPM は既定 OFF・管理者判断です。41 の新規作成の不足を D12 と自前 Key Vault で補います。Foundry の後追いと App Insights の Entra ID 接続は未解決です。[Run 0 調査](../infra/params/41_parameters.md) の差分を解消するまでは未実行です。
 
 ## D12 の責任分担
+
+次表は旧 IaC の実装状況です。S5／S6 は旧番号であり、現在の章順や GUI 手順の実行指示には使いません。GUI 主線の到達点は第3・4・6・7章と README を参照します。
 
 | 項目 | v2.1 の担当 | 状態 |
 |---|---|---|
