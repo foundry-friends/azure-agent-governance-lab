@@ -34,7 +34,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | G1〜G3 の根拠確認済み。GUI 作成→キー無効化→401→モデル配置。到達は C08 初回で確定、成立しなければ Basic |
 | 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分ける | 操作ドラフト・Consumer は Cloud Shell 代替・第4章完了後に実行 |
 | 6 | [監視と監査を設定する](docs/06-monitoring.md) | 操作・本文の証跡を準備する | 操作ドラフト・本文のEntra取り込み／保護はPreviewのため保留 |
-| 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 案 C＋アプリ専用 Cosmos への JSON 保存の操作・仕様ドラフト済み。社内PCのCLI配布は暫定採用。本人認証／配布の実機成立／APIへのVNet規則の適用は未確定で作成前停止 |
+| 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 案 C＋アプリ実装済み（Easy Auth 転送・REST・Cosmos JSON 保存）。社内 PC の CLI 配布は暫定採用。本人トークン取得・配布・到達は初回実行で確認 |
 | 8 | [権限・認証・ネットワークの統制を試す](docs/08-governance-tests.md) | 許可／拒否・IP・quota を比較する | 操作ドラフト・判定／証跡／復旧を具体化・実行は第7章の完成待ち |
 | 9 | [Policy・脅威検知・評価を試す](docs/09-policy-defender-eval.md) | Audit → Deny、検知・評価を体験する | GUI操作・判定ドラフト済み。Policyの安全な拒否試験／モデル制限／AI実検知／自動評価の到達は保留 |
 | 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | 最後に環境を削除し残存・費用を確認する | GUI操作・残存／費用判定ドラフト済み。削除・完全削除・課金の実機確認は未実施 |
@@ -73,7 +73,7 @@ flowchart LR
 
 第4章の G1〜G3 は根拠を確認済みです。主線は Standard setup のまま、Cosmos 接続の Preview 例外・3リソースのサービス到達設定・作成直後のキー無効化を適用します。IP 制限下で Agent Service が到達するかは C08 の初回実行で確定し、切り分けても成立しなければ新しい account の Basic setup に切り替えます。Cosmos だけを外した Standard setup は作りません。[開始・再開チェックリスト](docs/04-foundry-agent.md#作業開始再開前のチェックリスト) と、作成直後の401確認を含む各工程の条件を確認します。
 
-上図は Standard setup の検証目標です。Basic 分岐後の Agent Service は Microsoft 管理の保存先を使用し、アプリ専用 Cosmos 保存は独立して残ります。Foundry のプロジェクト API への VNet 規則の適用、本人トークン、アプリ実装は未確定で、第7章の開始条件は維持します。Key Vault は独立した監査対象です。全章を通し実行できる検証済みの完成手順ではありません。
+上図は Standard setup の検証目標です。Basic 分岐後の Agent Service は Microsoft 管理の保存先を使用し、アプリ専用 Cosmos 保存は独立して残ります。アプリは実装済みで、Foundry のプロジェクト API への VNet 規則の適用と本人トークンの取得は第7章の初回実行で確認します。第7章の開始条件は維持します。Key Vault は独立した監査対象です。全章を通し実行できる検証済みの完成手順ではありません。
 
 ## 守る前提
 

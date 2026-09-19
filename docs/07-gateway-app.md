@@ -2,7 +2,7 @@
 
 進め方: README の第0〜10章を順番に実施します。第6章 6.6 の進行条件を満たしてから進めます。本文監査など明示した Pending は記録を引き継ぎます。
 
-> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。更新日 2026-09-19。サービス間通信は 7.2 の案 C（2026-09-16 決定）で進めます。案 C のGUI操作ドラフトとアプリ仕様を作成済みです。社内PCからのCLI配布は暫定採用済みです。本人の委任認証・配布の実機成立・APIへのVNet規則の適用が未確定で、現時点では作成前に停止します。
+> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。更新日 2026-09-20。サービス間通信は 7.2 の案 C（2026-09-16 決定）で進めます。案 C の GUI 操作ドラフトを作成済みです。社内PCからのCLI配布は暫定採用済みです。アプリは実装済み（Easy Auth 転送・REST・2026-09-20 決定）。本人トークンの取得・配布・到達は初回実行で確認します。
 
 > **補足** この章では環境を削除しません。通常の削除は最後の第10章です。中断して片付ける場合だけ、第10章へ進みます。
 
@@ -76,16 +76,16 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 
 - [ ] 第4章のエージェントの初回応答と C08 の到達を確認している（Basic 分岐時は対象外と失敗の記録も引き継ぐ）。
 - [ ] 案 C の仮想ネットワーク・統合サブネット・サービス エンドポイント・Foundry の VNet 規則が、承認された IP 許可方針と両立する根拠を記録している。
-- [ ] Foundry が利用者本人を認可するトークン経路を確定している。
-- [ ] 呼び出しアプリのソース、固定した配布版、ランタイム、設定項目、GUI デプロイ手順がリポジトリに揃っている。
+- [ ] Foundry が利用者本人を認可する Easy Auth 転送の設定手順を確認している（工程6）。
+- [ ] 呼び出しアプリのソース、固定依存、ランタイム、設定項目、社内 PC の CLI 配布手順を確認し、工程7で ZIP を生成できる。
 - [ ] Entra のアプリ登録と必要な同意を実施できる担当者を確認している。RG の Owner 権限だけでテナント内の操作ができるとは判断しない。
 - [ ] APIM と App Service の費用、リージョン、削除予定を確認している。
 
-> **Note** 要確認: サービス間の IP 方針は案 C で確定しましたが、7.3 は案 C の操作ドラフトです。配布は社内PCのCLIを暫定採用し、委任認証と配布の実機成立は未確定で、アプリは仕様レビュー前・未実装です。チェックが揃うまで、以下の作成操作を開始しません。構成を変える場合は、その判断を反映した手順を先に確定します。IP 制限を外すことや SKU を変えることを復旧操作として実施しません。案 B・E は SKU の変更、案 A・D は許可範囲の変更を伴うため、承認前に実施しません。
+> **Note** 要確認: サービス間の IP 方針は案 C で確定しましたが、7.3 は案 C の操作ドラフトです。アプリと Easy Auth 転送方式は実装・確定済みで、配布は社内 PC の CLI を暫定採用しています。本人トークンの取得・配布・到達・保存は工程6〜7の初回実行で確認します。チェックが揃うまで、以下の作成操作を開始しません。構成を変える場合は、その判断を反映した手順を先に確定します。IP 制限を外すことや SKU を変えることを復旧操作として実施しません。案 B・E は SKU の変更、案 A・D は許可範囲の変更を伴うため、承認前に実施しません。
 
 ## 7.3. 操作（開始条件の解決後）
 
-以下は案 C の操作ドラフトです。7.2 のチェックが揃ってから実施します。認証・配布の未確定部分を飛ばして作成を開始しません。工程7の配布限定例外を除き、確認コマンドは Cloud Shell の Bash で実行し、山括弧の値を今回のリソースに置き換えます。実値と出力は非公開の証跡だけに保存します。
+以下は案 C の操作ドラフトです。7.2 のチェックが揃ってから実施します。工程6〜7の初回照合で成立しなければ、その箇所で停止します。工程7の配布限定例外を除き、確認コマンドは Cloud Shell の Bash で実行し、山括弧の値を今回のリソースに置き換えます。実値と出力は非公開の証跡だけに保存します。
 
 ### 1. 仮想ネットワークと統合サブネットを作る
 
@@ -141,7 +141,7 @@ az network vnet subnet show --resource-group '<専用RG名>' --vnet-name '<今�
 | リソース グループ | 今回の専用 RG |
 | 名前 | `<今回のアプリ名>` |
 | 公開 | コード |
-| ランタイム スタック | Python。配布版で検証したバージョンに固定（未確定） |
+| ランタイム スタック | Python 3.12（初回の選択可否は工程6で照合） |
 | オペレーティング システム | Linux |
 | 地域 | Japan East |
 | App Service プラン | 今回専用に作成。Linux B1 |
@@ -172,7 +172,7 @@ az network vnet subnet show --resource-group '<専用RG名>' --vnet-name '<今�
 
 > **画面の見え方** メインサイトと SCM（配布・高度なツール用サイト）は別々の入口です。VNet 統合ではこれらの受信制限は設定されません。空のアプリを作成した後、コード・資格情報を配置する前に入口を制限します。作成時から拒否を要求する組織では、この作成後設定の手順を実行せず、作成時設定の方法を先に確定します。
 
-> **Note** 要確認: Python の固定バージョン・起動設定は配布版の検証後に確定します。HTTPS／TLS／FTP の設定画面の位置も初回に照合します。空の Web アプリの作成をアプリ配布の完了とは扱いません。
+> **Note** 要確認: Python 3.12・起動設定は工程6で指定し、選択可否と起動は初回に照合します。HTTPS／TLS／FTP の設定画面の位置も初回に照合します。空の Web アプリの作成をアプリ配布の完了とは扱いません。
 
 ```bash
 az webapp show --resource-group '<専用RG名>' --name '<今回のアプリ名>' --query '{name:name,location:location,kind:kind,httpsOnly:httpsOnly,publicNetworkAccess:publicNetworkAccess}' --output json
@@ -308,58 +308,182 @@ Data Explorer で確認する担当者にもアプリ専用コンテナーのデ
 
 アプリ実装・配布後、社内ブラウザから合成会話の [会話メモを保存] を実行します。[Data Explorer] のアプリ専用コンテナーで JSON を確認し、Agent Service のコンテナーへ書いていないことを確認します。アプリ仕様は [同梱仕様](../assets/app/README.md) に記載し、この章ではコードを実装しません。
 
-### 6. サインインと本人トークンの設定を詰める
+### 6. サインインと本人トークンを設定する
 
-次の設定は入口の認証です。下流トークンの方式が確定してから、アプリ仕様と合わせて保存します。
+Easy Auth 転送＋REST を採用します（D17・2026-09-20）。入口の署名・発行者・audience の検証は Easy Auth、下流トークンの検証は Foundry が担当し、アプリは本人ヘッダーと期限を確認します。Foundry を MI で呼ぶ代替は使いません。
 
-1. アプリの [設定] → [認証] を開きます。
-2. [ID プロバイダーの追加] を選択します。
-3. [Microsoft] を選択します。
-4. 現在の従業員テナントを選択します。
-5. 今回専用のアプリ登録を選択します。
-6. 下表の値を照合します。
-7. [追加] を選択します。
+> **Note** 要確認: 以下の en-us の画面名の日本語表示は初回に照合します。
+
+1. 対象 App Service の [Settings] を開きます。
+2. [Authentication] を選択します。
+3. [Add identity provider] を選択します。
+4. [Microsoft] を選択します。
+5. [Workforce configuration (current tenant)] を選択します。
+6. [Create new app registration] を選択します。
+7. [Name] に下表の値を入力します。
+8. [Supported account type] に下表の値を選択します。
 
 | 項目 | 値 |
 |---|---|
-| アカウントの種類 | シングルテナント |
-| アクセス | 認証を要求 |
-| 未認証の要求 | ブラウザ入口はサインインへ誘導。アプリ API の応答は実装仕様で確定 |
-| アプリ資格情報 | 保護された設定で管理。ソース・ZIP・証跡に含めない |
-| トークン ストア | Easy Auth からプロバイダートークンを受け取る方式で必要。採用時に設定を確認 |
+| [Name] | `<app-registration-name>`（今回の App Service 専用） |
+| [Supported account type] | [Current tenant - Single tenant] |
 
-> **画面の見え方** Easy Auth のサインイン成功は、Foundry が受け付ける本人アクセストークンを取得できた証拠ではありません。`X-MS-TOKEN-AAD-ACCESS-TOKEN` の存在だけでも宛先は保証されません。`/.auth/me` の出力やヘッダーを証跡に貼り付けません。
+9. [Configure additional checks] の [Tenant requirement] を下表の値にします。
+10. [Client application requirement] の既定値を維持します。
+11. [Identity requirement] の既定値を維持します。
+12. [Configure authentication settings] の [Restrict access] を下表の値にします。
+13. [Unauthenticated requests] を下表の値にします。
+14. [Token store] をオンにします。
+15. [Add] を選択します。
 
-| 確認対象 | 今回裏付けられたこと | まだ確定しないこと |
-|---|---|---|
-| Foundry 用スコープ | 公式 SDK クイックスタートに `https://ai.azure.com/.default` の例がある | カスタムアプリの委任権限の選択、同意、Easy Auth のログイン設定との組み合わせ |
-| 呼び出す API | 同じ資料に既存エージェント専用の Responses 経路がある | 第4章で作成するエージェントとの世代・API・GA の適合性 |
-| 本人の権限 | 第5章の Consumer／User／無権限主体を継続使用 | ロールの名前だけで全操作の成否を断定しない |
-| OBO | 中間 API 宛の本人アクセストークンを下流用へ交換する方式 | Easy Auth から Foundry 用トークンを直接得る方式で足りるか、OBO が必要か |
-
-> **Note** 要確認: 委任権限・同意・実トークンの audience と scope／claim・期限切れ時の扱いを確定するまで、認証設定を完成例として扱いません。`.default` の文字列だけでは本人の委任権限の取得は証明できません。OBO には中間 API 自身を audience とするアクセストークンが必要で、Graph 用トークンや ID トークンでは代用しません。APIM／App Service の MI に置き換えて C02 を成功扱いにしません。API Playground の Preview 操作は対象外です。
-
-### 7. 同梱アプリの仕様と配布経路を確定する
-
-[アプリ仕様](../assets/app/README.md) はレビュー用です。現時点ではアプリコード・配布 ZIP はありません。
-
-| 同梱するもの | 配布前に揃える内容 |
+| 項目 | 値 |
 |---|---|
-| 最小画面 | サインイン状態、合成入力、送信、応答、会話メモ保存、相関 ID、失敗した層 |
-| ソースと固定版 | Python／FastAPI、固定依存関係、起動設定、配布版とハッシュ |
-| 認証 | 利用者本人の下流トークン。期限切れ・同意不足は停止し再認証を案内 |
-| 設定 | 固定の Foundry エンドポイントと対象エージェント、Cosmos のアプリ専用 DB／コンテナー。任意 URL を入力させない |
-| 秘密値の扱い | トークン・Cookie・ヘッダー・本文をアプリログへ出さない |
-| 配布 | Linux B1・SCM 社内 IP 制限を維持できる方法 |
+| [Tenant requirement] | アプリ登録と同じテナントのみ |
+| [Client application requirement] | 既定 |
+| [Identity requirement] | 既定 |
+| [Restrict access] | [Require authentication] |
+| [Unauthenticated requests] | [HTTP 302 Found redirect] |
+| [Token store] | オン |
 
-**計画にあったブラウザからの ZIP ドラッグ配布は掲載しません。** Learn「ファイルの展開」は Kudu の ZIP デプロイ UI が App Service on Linux で動作しないと明記しています。Python のために Windows へ切り替えることもしません。
+> **補足** シークレットはアプリ設定 `MICROSOFT_PROVIDER_AUTHENTICATION_SECRET` に自動保存されます。値を見ない・記録しないでください。アプリコードには保持しません。
 
-| 方法 | 本ラボでの判断 |
+16. [Authentication] で作成した ID プロバイダーの編集を開きます。
+17. issuer URL を下表の値に変更します。
+18. 変更を保存します。
+19. [Configuration] で `WEBSITE_AUTH_AAD_ALLOWED_TENANTS` を下表の値として登録します。
+20. 設定を保存します。
+
+| 項目 | 値 |
 |---|---|
-| Kudu の ZIP デプロイ UI | Linux では使用不可 |
-| Cloud Shell から ZIP 配布 | SCM の社内 IP 制限と両立するとは扱わない |
-| 社内 PC から Azure CLI で ZIP 配布 | 暫定採用（2026-09-16）。配布とその認証・対象確認だけをローカルで実施し、実機検証で再評価 |
-| 外部 CI・FTP | 自動採用しない。SCM の制限解除・FTP 有効化を回避策にしない |
+| issuer URL | `https://login.microsoftonline.com/<tenant-id>/v2.0` |
+| `WEBSITE_AUTH_AAD_ALLOWED_TENANTS` | `<tenant-id>` |
+
+> **補足** 簡易作成時の issuer URL はレガシーの `https://sts.windows.net` になるため、現行形式へ編集します。`/healthz`・`/api/*` を含め、Easy Auth の除外パスは作りません。
+
+21. Entra の [App registrations] を開きます。
+22. 今回のアプリ登録を選択します。
+23. [API permissions] を選択します。
+24. [Add a permission] を選択します。
+25. Foundry（`https://ai.azure.com`）の委任されたアクセス許可を追加します。
+26. [Grant admin consent] を選択します。
+
+> **Note** 要確認: 一覧での表示名は初回に照合します（「Azure AI Foundry」「Microsoft Foundry」「Azure Machine Learning Services」のいずれか）。見つからなければここで停止します。委任されたアクセス許可が無ければ `.default` の要求は成功しません。
+
+#### Cloud Shell でログインスコープを設定する（GUI に無い操作）
+
+以下は Cloud Shell（Bash）で行います。GET した全設定を残し、`loginParameters` だけを変更します。JSON 全体をログや共有証跡へ貼らず、確認出力も当該配列に限定します。
+
+```bash
+az rest --method get --url "https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app-name>/config/authsettingsV2?api-version=2024-11-01" --output json > authsettingsV2.json
+```
+実行結果の確認ポイント: 対象アプリの設定が `authsettingsV2.json` に保存されます。対象名を照合し、ファイル全文を表示しません。
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+path = Path('authsettingsV2.json')
+data = json.loads(path.read_text())
+login = data['properties']['identityProviders']['azureActiveDirectory'].setdefault('login', {})
+login['loginParameters'] = ['scope=openid profile email offline_access https://ai.azure.com/.default']
+path.write_text(json.dumps(data))
+print('loginParameters を更新しました')
+PY
+```
+実行結果の確認ポイント: 既存の設定を保持し、`loginParameters` に本人用 Foundry スコープと更新用 `offline_access` を設定します。
+
+```bash
+az rest --method put --url "https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app-name>/config/authsettingsV2?api-version=2024-11-01" --body @authsettingsV2.json --output none
+```
+実行結果の確認ポイント: 更新が成功し、設定の全文が標準出力へ出ないことを確認します。
+
+```bash
+az rest --method get --url "https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app-name>/config/authsettingsV2?api-version=2024-11-01" --query 'properties.identityProviders.azureActiveDirectory.login.loginParameters' --output json
+```
+実行結果の確認ポイント: 配列が `scope=openid profile email offline_access https://ai.azure.com/.default` と一致します。
+
+> **補足** Learn の手順は API Playground（Preview）ですが、本ラボでは同じ REST を Cloud Shell で行います。API Playground は使用しません。
+
+#### アプリ設定と起動コマンドを登録する
+
+1. 対象 App Service の [Configuration] を開きます。
+2. 下表の設定項目を 1 件ずつ登録します。
+3. 設定を保存します。
+
+| 項目 | 値 |
+|---|---|
+| `FOUNDRY_PROJECT_ENDPOINT` | `https://<resource-name>.services.ai.azure.com/api/projects/<project-name>` |
+| `FOUNDRY_AGENT_NAME` | `<agent-name>`（既存エージェント。英数字・`_`・`-` の 1〜64 文字） |
+| `FOUNDRY_AGENT_DISPLAY_NAME` | `<agent-display-name>`（画面表示名） |
+| `ENTRA_TENANT_ID` | `<tenant-id>` |
+| `COSMOS_ENDPOINT` | `<cosmos-endpoint>`（作成済み Cosmos DB の HTTPS エンドポイント） |
+| `COSMOS_DATABASE` | `<app-db>` |
+| `COSMOS_CONTAINER` | `<app-container>`（`enterprise_memory` 禁止） |
+| `APP_VERSION` | `<version>`（ZIP の版と一致） |
+| `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
+
+`MAX_PROMPT_CHARS` は既定 2000、`FOUNDRY_TIMEOUT_SECONDS` は既定 60 を使います。検証規則と App Service 側の設定は[同梱仕様](../assets/app/README.md#設定項目)を参照します。
+
+4. [General settings] を開きます。
+5. [Stack] に下表の値を選択します。
+6. [Major version] に下表の値を選択します。
+7. [Startup Command] に下表の値を入力します。
+8. 設定を保存します。
+
+| 項目 | 値 |
+|---|---|
+| [Stack] | Python |
+| [Major version] | 3.12 |
+| [Startup Command] | `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000` |
+
+> **Note** 要確認: 3.12 が一覧に無ければ一覧にある最も近い 3.x を選び、[README の requires_python](../assets/app/README.md#配布物と配布方式) を満たすことを確認します。代替版は未検証です。ポート 8000 の成立も初回に [Log stream] で照合します。
+
+9. 社内ブラウザでアプリの URL を開きます。
+10. 利用者としてサインインします。
+11. 同意画面に Foundry の許可が出ることを目視します。
+
+確認ポイント: 同意画面・`/.auth/me` の出力を証跡に貼りません。管理者同意済み等で同意画面が出ない場合、画面が無いことを成功の証拠にはせず設定と初回要求で照合します。アプリ画面と API は工程7の配布後に確認します。
+
+> **Note** 要確認: 取得したアクセス トークンの `aud` が `https://ai.azure.com` であることの確認方法（外部サイトに貼らずに確認する手段）は初回に検証チームが決めます。
+
+| 確定したこと | 初回で照合すること |
+|---|---|
+| Easy Auth 転送・トークン ストア・Foundry スコープ・1 回の更新 | 委任許可の表示名、同意、本人トークンの取得と audience、`X-MS-CLIENT-PRINCIPAL-IDP` の値（アプリは `aad` を前提） |
+| REST の既存エージェント Responses endpoint・1 往復 | 応答 JSON の形、Consumer の実行可否（C02） |
+| Oryx・固定依存・起動コマンド・社内 PC の ZIP 配布 | Python の選択、ポート、SCM 到達・ビルド・起動 |
+
+### 7. 同梱アプリを配布する
+
+[同梱アプリ](../assets/app/README.md) は実装済みです。Azure への配布・本人認証・到達・保存は初回実行で確認します。
+
+| 同梱物 | 実物と配布範囲 |
+|---|---|
+| サーバー | `assets/app/app/` の `__init__.py`、`main.py`、`config.py`、`auth.py`、`foundry.py`、`cosmos.py` |
+| 画面 | `app/static/index.html`、`app.js`、`app.css` |
+| 固定依存 | `assets/app/requirements.txt` の直接依存 5 つ。推移的依存は Oryx の pip 解決 |
+| ローカル確認 | `assets/app/tests/`、`requirements-dev.txt`。ZIP には入れない |
+| 配布スクリプト | `scripts/package_app.sh`。`outputs/app-<version>.zip` と SHA256 を生成 |
+
+社内 PC の Bash でリポジトリ直下から実行します。版は英数字で開始し、英数字・`.`・`_`・`-` を使います。同じ版の上書きはしません。
+
+```bash
+bash scripts/package_app.sh '<version>'
+```
+実行結果の確認ポイント: ZIP ルート直下に `app/` と `requirements.txt` が入り、tests・README・開発依存・キャッシュは含まれません。`.zip.sha256` と標準出力のハッシュが得られます。
+
+macOS でハッシュを照合します。
+
+```bash
+(cd outputs && shasum -a 256 -c 'app-<version>.zip.sha256')
+```
+実行結果の確認ポイント: 対象 ZIP が OK と表示されます。
+
+Linux では代わりに次を使います。
+
+```bash
+(cd outputs && sha256sum -c 'app-<version>.zip.sha256')
+```
+実行結果の確認ポイント: 対象 ZIP が OK と表示されます。
 
 #### なぜ配布時だけ社内 PC を使うのか
 
@@ -371,9 +495,9 @@ Data Explorer で確認する担当者にもアプリ専用コンテナーのデ
 
 > **補足** 2026-09-16 に、**アプリの ZIP 配布と、そのためのローカル認証・対象確認だけ**を社内 PC の Azure CLI で行う例外を暫定採用しました。リソース作成や通常の設定変更までローカル CLI に移す方針ではありません。SCM の IP 制限、Entra 認証、FTP 無効を維持し、実機検証時にこの配布方法の到達性・権限・端末要件を再評価します。方針の承認は、配布成功を確認したという意味ではありません。
 
-#### 社内 PC から固定版 ZIP を配布する（配布物の完成後）
+#### 社内 PC から固定版 ZIP を配布する
 
-この節だけは **Cloud Shell ではなく社内 PC の Bash** で実行します。組織で承認された Azure CLI と Bash を用意し、端末への導入方法は社内ルールに従います。アプリ仕様・固定版 ZIP・依存関係のビルド方法・起動設定が揃うまでは実行しません。
+この節だけは **Cloud Shell ではなく社内 PC の Bash** で実行します。組織で承認された Azure CLI と Bash を用意し、端末への導入方法は社内ルールに従います。工程6の認証・アプリ設定と、工程7で作った ZIP・ハッシュを照合してから実行します。
 
 | 確認する項目 | 条件 |
 |---|---|
@@ -418,7 +542,38 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 > **画面の見え方** 基本認証が無効な場合、対応する Azure CLI は Entra 認証で配布します。発行プロファイルやパスワードをダウンロードして回避しません。CLIの認証は配布担当者用で、アプリ利用者のFoundry用トークンとは別です。
 
-> **Note** 要確認: 方針は暫定採用済みですが、実機での SCM 到達・配布権限・ビルド・起動は未検証です。403の場合は送信元IPと配布権限を分けて確認し、SCMを全公開にせず停止します。固定版 ZIP と起動設定が完成した段階で、この操作案を検証します。
+> **Note** 要確認: 方針は暫定採用済みですが、実機での SCM 到達・配布権限・ビルド・起動は未検証です。403の場合は送信元IPと配布権限を分けて確認し、SCMを全公開にせず停止します。工程6の設定と今回作成した固定版 ZIP を使って初回結果を記録します。
+
+#### 配布後に GUI と社内ブラウザで確認する
+
+1. App Service の [Deployment Center] を開きます。
+2. [Logs] を選択します。
+
+確認ポイント: Oryx がルートの `requirements.txt` を使ってビルドを完了しています。送信成功だけで起動成功にしません。
+
+3. [Log stream] を開きます。
+
+確認ポイント: uvicorn の起動を確認します。失敗時は設定名・Python ランタイム・ポートを照合し、例外全文や秘密値を共有証跡へ貼りません。
+
+4. 社内ブラウザでアプリの `/healthz` を開きます。
+5. サインインします。
+
+確認ポイント: `{"ok": true, "app_version": "<version>"}` が返り、配布版と一致します。Easy Auth の除外パスは作らないので App Service の正常性チェック機能には使えません。
+
+6. 同じブラウザで `/` を開きます。
+7. 入力欄に合成プロンプトを入力します。
+8. [送信] を選択します。
+
+確認ポイント: 同じ既存エージェントから 1 往復の応答が返り、相関 ID が表示されます。Consumer の可否は第8章 C02 で比較します。
+
+9. [会話メモを保存] を選択します。
+
+確認ポイント: 保存成功、メモ ID、`userId` の先頭 12 文字が表示されます。
+
+10. 検証担当者として Cosmos DB の [Data Explorer] を開きます。
+11. アプリ専用コンテナーの該当 JSON を開きます。
+
+確認ポイント: メモ ID と `userId` の先頭 12 文字が画面と一致し、`prompt`・`response`・`createdAt`・`appVersion` が存在します。生の oid を含まず、`enterprise_memory` には書かれていません。本文・ユーザー識別子を診断ログや共有証跡へ貼りません。
 
 ### 8. ツール経路用の APIM Basic v2 を作る
 
@@ -510,12 +665,20 @@ ApiManagementGatewayLogs
 - ツール経路の APIM ログとアプリの本人経路の証跡を分けて記録した。
 - quota・本文監査・未許可ツールの強制点の Pending 部分を明示した。
 
-現在は未達です。設定確認だけでは到達・本人認可・配布の成立を証明できません。完成したように扱って第8章へ進みません。
+アプリは実装済みですが、本人トークンの取得・配布・到達・保存は初回実行で確認するまで未達として扱います。7.4 の完了条件を満たしてから第8章へ進みます。
 
 ## 7.5. うまくいかない場合
 
 | 症状 | 切り分け | 制限内での対応 |
 |---|---|---|
+| `entry` | 本人ヘッダー、IDP、トークン ストア、委任スコープ、期限 | `expired` は更新後 1 回だけ再送。`no_token` が続けば管理者へ。ヘッダーやトークンを表示しない |
+| `foundry_authn` | Foundry 401・audience・同意・期限（C03） | 工程6の設定と照合。MI で代用しない |
+| `foundry_authz` | Foundry 403・本人の project スコープロール（C02） | ネットワーク規則も別途照合し、403 だけでロール不足と断定しない |
+| `network` | 到達不能・タイムアウト・統合先・VNet 規則（C08） | IP 制限を維持して照合。タイムアウトを自動再送しない |
+| `cosmos_authz` | Cosmos 401／403・MI のデータロールとスコープ（A14） | VNet 規則も照合。キー認証に切り替えない |
+| `cosmos_network`／`cosmos_other` | Cosmos 到達・上流ステータス（A14） | 対象コンテナー・規則を確認し、本文や例外の生メッセージは記録しない |
+| `csrf`／`input`／`duplicate` | 同一オリジン・入力長・相関 ID | 同梱画面から操作し、30 秒以内の同じ ID は再送しない |
+| `foundry_notfound`／`foundry_other` | 対象名・URL・上流ステータス | 設定と初回応答形式を照合し、権限を広げて回避しない |
 | 統合候補が表示されない | リージョン・サブネット空き・委任・操作権限 | 今回専用の設定と照合。他の実施者のサブネットは使わない |
 | App Service → Foundry が403 | 統合先・サービス エンドポイント・VNet 規則・カスタム サブドメイン・API の適用範囲 | 同じエージェントのエンドポイントを照合。ネットワークとRBACを別々に確認 |
 | アプリの Cosmos 保存が403 | Cosmos の VNet 規則・サービス エンドポイント・App Service MI のデータロール・スコープ | キー認証や account 全体の権限へ切り替えず、アプリ専用コンテナーとの一致を確認 |
@@ -530,7 +693,7 @@ ApiManagementGatewayLogs
 
 ## 7.6. 次の操作
 
-7.4 の完了条件を満たしてから、第8章の本人権限・入口・ツールの比較試験へ進みます。現時点の次工程は、[アプリ仕様](../assets/app/README.md) のレビュー、本人トークンの方式の確定、アプリの実装、暫定採用した社内PCからのCLI配布の実機検証です。第4章は G1〜G3 の根拠確認済みで、C08 の初回結果と Standard／Basic の分岐記録を引き継ぎます。第6章 C05 の保留は維持します。
+7.4 の完了条件を満たしてから、第8章の本人権限・入口・ツールの比較試験へ進みます。現時点の次工程は、初回実行（工程6〜7）の結果の記録です。第4章は G1〜G3 の根拠確認済みで、C08 の初回結果と Standard／Basic の分岐記録を引き継ぎます。第6章 C05 の保留は維持します。
 
 ## 7.7. 費用
 
@@ -600,6 +763,15 @@ ApiManagementGatewayLogs
 - 出典: [App Service のマネージド ID](https://learn.microsoft.com/en-us/azure/app-service/overview-managed-identity)（取得日 2026-09-19）
 
 - 出典: [Cosmos DB データロール割当 CLI](https://learn.microsoft.com/en-us/cli/azure/cosmosdb/sql/role/assignment?view=azure-cli-latest)（取得日 2026-09-19）
+
+- 出典: [Linux Python と Oryx](https://learn.microsoft.com/en-us/azure/app-service/configure-language-python)（取得日 2026-09-19）
+- 出典: [Easy Auth トークンと更新](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-oauth-tokens)（取得日 2026-09-19）
+- 出典: [Easy Auth ユーザー識別](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-user-identities)（取得日 2026-09-19）
+- 出典: [Entra プロバイダー設定](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-provider-aad)（取得日 2026-09-19）
+- 出典: [既存エージェント REST](https://learn.microsoft.com/en-us/azure/foundry/quickstarts/get-started-code)（取得日 2026-09-19）
+- 出典: [ZIP 配布](https://learn.microsoft.com/en-us/azure/app-service/deploy-zip)（取得日 2026-09-19）
+- 出典: [Cosmos Entra 認証](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（取得日 2026-09-19）
+- 出典: [authsettingsV2 REST（本文未取得・トークン資料から参照）](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/update-auth-settings-v-2)（取得日 2026-09-19）
 
 ---
 

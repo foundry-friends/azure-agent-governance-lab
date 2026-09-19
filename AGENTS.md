@@ -70,6 +70,8 @@
 
 CLI と Bicep の旧番号・モードは互換性のため維持しています。`verify.sh --section` の引数を本文の新章番号と混同しません。番号対応は checks/README.md にあります。固定停止点は維持します。
 
+2026-09-20 に第7章の呼び出しアプリ（`assets/app/`・Easy Auth 転送・REST）を実装済み。実機未検証。
+
 ## 8. やってはいけないこと
 
 - git の commit / push / branch 操作（依頼者が行う）。
