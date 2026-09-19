@@ -2,7 +2,7 @@
 
 進め方: README の第0〜10章を順番に実施します。第3章の完了条件を満たしてから進めます。
 
-> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。G1〜G3 の根拠確認済み・C08 の到達は初回実行で確認。更新日 2026-09-19。
+> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。G1〜G3 の根拠確認済み・C08 の到達は初回実行で確認。更新日 2026-09-20。
 
 > **Note** Preview: Azure Cosmos DB 接続は 2026-09 時点で Preview（SLA なし・本番非推奨）。本手順では NoSQL に触れる体験を優先して採用します（AGENTS.md「Preview は載せない」の唯一の例外）。
 
@@ -22,6 +22,16 @@
 
 第3章の Storage・Cosmos DB・AI Search の ARM ID、認証設定、社内公開 IP の許可リストを非公開の記録で確認します。構築担当には Foundry account/project の作成権限と、接続用ロールを割り当てる権限が必要です。利用担当の Foundry User と、構築担当の管理権限を混同しません。
 
+| 手元に用意する情報 | 確認元 |
+|---|---|
+| 検証用サブスクリプション ID・専用 RG・社内 CIDR | 第1章の `.env` と非公開の作業メモ |
+| Storage・Cosmos DB・AI Search の名前と ARM ID | 第3章で保存した3つの ID |
+| Log Analytics ワークスペース（LAW）の名前と ARM ID | 第1章。応答試験前の診断設定の宛先 |
+| Foundry account 名 | 今回用の未使用の名前。以下の `<account>` をこの名前へ置換 |
+| 初期 project 名と MI の principal ID | 作成後に工程2で確認。作成前に推測して記入しない |
+
+> **画面の見え方** Azure portal（`portal.azure.com`）はリソースの作成・ネットワーク・IAM、Microsoft Foundry（`ai.azure.com`）は接続・モデル・エージェントに使います。別タブで開き、画面を切り替えるたびに対象 account／project を確認します。Bash と PowerShell の変数・選択サブスクリプションは共有される前提にしません。
+
 ### 作成前に確認した根拠
 
 G1〜G3 は従来の停止条件の管理番号です。2026-09-19 の判断 A10〜A13（D15）により、次の根拠を確認して作成へ進みます。実機の到達を確認済みとする番号ではありません。
@@ -38,7 +48,7 @@ Standard setup は3リソース同時 BYO が必須です。[ネットワーク�
 
 | リソース | GUI でのキー無効化 | Cloud Shell の扱い |
 |---|---|---|
-| Cosmos DB | 作成時 [セキュリティ] > [キーベースの認証] = [無効] | 第3章の設定を照合 |
+| Cosmos DB | 現行の第3章は portal テンプレート編集で作成時にキー無効を指定 | 第3章の設定を照合。通常ウィザードの作成時ネットワーク設定は保留 |
 | Storage | ウィザードに項目があれば無効。無ければ作成直後 [設定] > [構成] | Cloud Shell 用 Storage は別に維持。B18 はウィザードの項目有無の初回照合 |
 | Search | 作成直後 [設定] > [キー] > [ロールベースのアクセス制御] | GUI が使えない場合だけ第3章の代替 |
 | Foundry account | 作成ウィザードにキー無効化の項目なし | 作成直後 `Set-AzCognitiveServicesAccount -DisableLocalAuth $true`。401 確認後にモデル配置 |
@@ -61,16 +71,18 @@ Learn の手動作成順は「基盤 → account・project・接続 → 管理�
 
 1. 社内 PC のブラウザで [Foundry の作成画面](https://portal.azure.com/#create/Microsoft.CognitiveServicesAIFoundry) を開きます。
 2. [Basics] に下表の基本情報を入力します。
-3. [Network] の [Inbound Access] を [Selected networks] にします。
-4. 社内公開 CIDR を入力します。
+3. [Network] を開き、[Inbound Access] で [Selected networks] を選択します。
+4. 社内公開 CIDR を1件ずつ入力し、承認済み一覧と照合します。
 5. [Identity] でシステム割り当てマネージド ID をオンにします。
 6. [Encryption] で Microsoft マネージド キーを選択します。
 7. [Storage] の [Agent service] で [Select Resources] を選択します。
-8. 第3章の Storage・AI Search・Cosmos DB を選択します。
+8. 各リソースの選択欄で第3章の名前を選び、サブスクリプション・RG・ARM ID を非公開メモと照合します。新規リソースの作成は選びません。
 9. [Storage] 上段の Key Vault／Application Insights が下表の方針と一致することを確認します。
-10. [Review + create] で設定を照合します。
+10. [Review + create] を開き、下表の値と選択済み3リソースを照合します。
 11. [Create] を選択します。
 12. デプロイが完了するまで待ちます。
+13. ポータル上部の検索欄で作成した Foundry 名を検索し、対象リソースの [概要] を開きます。
+14. 自分のサブスクリプション・RG・Foundry 名であることを確認し、直下のキー無効化へ進みます。
 
 | 項目 | 値 |
 |---|---|
@@ -90,12 +102,26 @@ Learn の手動作成順は「基盤 → account・project・接続 → 管理�
 
 #### 作成直後に Foundry account のキーを無効化する（A13）
 
-モデル配置とデータ投入より前に行います。この操作と直後の設定確認だけは Azure Cloud Shell の [PowerShell] を使います。認証済みの Cloud Shell で今回のサブスクリプションを選び、山括弧を対象に置換します。
+モデル配置とデータ投入より前に行います。この操作と直後の設定確認だけは Azure Cloud Shell の [PowerShell] を使います。山括弧を今回の対象に置き換え、次の順で操作します。
+
+1. Azure portal 上部の [Cloud Shell] を開きます。
+2. Cloud Shell のシェル切替メニューで [PowerShell] を選択します。
+3. PowerShell のプロンプトが表示されるまで待ちます。
+4. 次のコマンドで、今回のテナントとサブスクリプションを選択します。
+
+```powershell
+Set-AzContext -Tenant '<tenant-id>' -Subscription '<subscription-id>'
+```
+実行結果の確認ポイント: 表示された Tenant と Subscription が第1章の対象と一致することを確認します。
+
+5. 対象を照合できたら、キーを無効にします。
 
 ```powershell
 Set-AzCognitiveServicesAccount -ResourceGroupName '<rg>' -Name '<account>' -DisableLocalAuth $true
 ```
 実行結果の確認ポイント: 今回の Foundry account の更新が成功したことを確認し、まだデータ面に反映済みとは扱いません。
+
+6. 更新後の設定を読み取ります。
 
 ```powershell
 (Get-AzCognitiveServicesAccount -ResourceGroupName '<rg>' -Name '<account>').DisableLocalAuth
@@ -110,18 +136,39 @@ Set-AzCognitiveServicesAccount -ResourceGroupName '<rg>' -Name '<account>' -Disa
 
 1. Azure portal で今回の Foundry account を開き、[リソース管理] > [キーとエンドポイント] を選択します。
 2. [キー 1] の [コピー] を選択します（画面に値を表示しません）。
-3. Cloud Shell（Bash）で次を実行し、貼り付けたキーを変数に入れます（`read -s` は入力を表示しません）。
+3. Cloud Shell のシェル切替メニューで [Bash] を選択します。
+4. Bash のプロンプトが表示されたことを確認します。
+5. 次の入力待ちコマンドを実行します。
 
 ```bash
-read -s -p "old key: " OLD_KEY; echo
+read -s -p "old key: " OLD_KEY
+```
+実行結果の確認ポイント: `old key:` の後で入力待ちになることを確認します。ここに手順2でコピーしたキーを貼り付け、Enter を押します。入力内容は表示されません。
+
+6. `<account>` を今回の account 名に置き換え、下の HTTP ステータス確認を実行します。
+
+```bash
 curl -s -o /dev/null -w "%{http_code}\n" -H "api-key: ${OLD_KEY}" "https://<account>.openai.azure.com/openai/models?api-version=2024-10-21"
+```
+実行結果の確認ポイント: HTTP ステータスを確認します。`200` は反映待ち、`401` は下記の理由照合が必要です。`403`・`404` 等や通信失敗はキー無効化の成功にしません。
+
+7. 結果にかかわらず、キーを変数から消します。
+
+```bash
 unset OLD_KEY
 ```
-実行結果の確認ポイント: `401` が表示されたら無効化完了です。`200` なら反映待ちなので、時間を置いて再実行します。`unset` 後に `echo ${OLD_KEY:-cleared}` が `cleared` を返すことを確認します。
+実行結果の確認ポイント: エラーなくプロンプトに戻ることを確認します。
 
-> **Note** 要確認: 呼び出す GA データ面 API と URL は、作成した account の [キーとエンドポイント] の表示に合わせて初回に照合します。401 の理由文は上記 Learn の文言で確認します。
+8. 変数が残っていないことを確認します。
 
-4. C03 の証跡には、対象 account 名・時刻・HTTP 401・確認した API だけを残します。キーの値・ヘッダー全文・コマンド履歴は残しません。
+```bash
+echo "${OLD_KEY:-cleared}"
+```
+実行結果の確認ポイント: `cleared` と表示されることを確認します。
+
+> **Note** 要確認: 呼び出す GA データ面 API と URL は、作成した account の [キーとエンドポイント] の表示に合わせて初回に照合します。上のコマンドは本文を捨てるため、HTTP 401 の理由文までは確認できません。正しい API／URL と当該 account の実キーで呼び、公式の拒否理由に対応することを別途照合する必要があります。その方法が未確定、または理由を確認できない場合は C03 を Pending とし、401 の数字だけでモデル配置へ進みません。
+
+9. C03 の証跡には、対象 account 名・時刻・HTTP ステータス・確認した API・拒否理由を照合できたかと判定だけを残します。キーの値・ヘッダー全文・コマンド履歴は残しません。
 
 #### Storage に Foundry account のリソース インスタンス規則を追加する
 
@@ -129,18 +176,35 @@ unset OLD_KEY
 2. リソース設定の [View] を選択します。
 3. [Resource instances] を開きます。
 4. [Resource type] に `Microsoft.CognitiveServices/accounts` を選択します。
-5. [Instance name] に今作成した Foundry account を選択します。
+5. [Instance name] に今作成した Foundry account だけを選択します。テナント・サブスクリプション・RG 内の全インスタンスを許可する選択肢は使いません。
 6. [保存] を選択します。
-7. 社内 IP 規則とキー無効を維持していることを確認します。
+7. [ネットワーク] を開き直し、今回の Foundry account の規則が保存されていることを確認します。
+8. 社内 IP 規則を照合します。
+9. [設定] > [構成] でキーアクセスが [無効] のままであることを確認します。
 
 > **Note** 要確認: [View]・[Resource instances]・[Resource type]・[Instance name] の日本語表示は初回に照合します。Learn の信頼サービス一覧には `Microsoft.CognitiveService/accounts` という表記がありますが、実際のリソース種類は `Microsoft.CognitiveServices/accounts` と照合します。
 
 ### 2. 作成後の account・project を照合する
 
-1. 作成した Foundry リソースの [JSON ビュー] を開きます。
-2. 下表と account の設定を照合します。
-3. 初期 project の存在と ARM ID を確認します。
-4. account と project の MI の principal ID を区別して非公開に記録します。
+1. Azure portal で今回の Foundry account の [概要] を開きます。
+2. [JSON ビュー] を選択します。
+3. `id` と `identity.principalId` を、それぞれ「account ARM ID」「account MI principal ID」として非公開メモに控えます。
+4. 下表と account の設定を照合します。
+5. 別タブで [Microsoft Foundry](https://ai.azure.com) を開きます。
+6. [New Foundry] がオンであることを確認します。
+7. プロジェクト選択画面で、今回の account に作られた初期 project を選択します。
+8. project の詳細で、名前と親 account を確認します。
+9. Azure portal で対応する project のリソースを開き、[JSON ビュー] の `id` と `identity.principalId` を控えます。
+10. 下の対応表で ID を区別して保存します。
+
+| 記録名 | 用途 |
+|---|---|
+| account ARM ID | account のネットワーク・capability host・Storage のインスタンス規則 |
+| project ARM ID | project の接続・capability host・利用者権限のスコープ |
+| account MI principal ID | account 自身のマネージド ID の識別 |
+| project MI principal ID | BYO リソースへ割り当てる project のマネージド ID の識別 |
+
+> **Note** 要確認: 初期 project の作成有無と、portal から project のリソース／JSON 表示へ移る導線は初回に照合します。見つからない場合は B17 に記録します。ARM ID・principal ID・project endpoint は別の値で、互いに代用しません。account ARM ID は第1章の編集方法で `.env` の `FOUNDRY_ACCOUNT_RESOURCE_ID` に保存します。
 
 | 項目 | 値 |
 |---|---|
@@ -155,8 +219,14 @@ unset OLD_KEY
 ### 3. BYO 接続と capability host を確認する
 
 1. [Microsoft Foundry](https://ai.azure.com) で対象 project を選びます。
-2. [Manage] > [Project details] > [Connected resources] を開きます。
-3. 下表の接続3本を照合します。
+2. 右上の [Manage] を選択します。
+3. [Project details] を開きます。
+4. [Connected resources] を選択します。
+5. 接続一覧から Cosmos DB・Storage・AI Search の各接続を1本ずつ開きます。
+6. 接続名・対象リソース・認証方式を下表と照合します。
+7. 接続名と第3章の ARM ID の対応を非公開メモに記録します。
+
+> **Note** 詳細画面で `authType` 等の生のプロパティを確認できない場合は、表示された項目と照合できなかった項目を B17 に残します。画面上の名称だけから AAD 接続だと推測しません。
 
 > **Note** 要確認: [Manage]・[Project details]・[Connected resources] の日本語表示は初回に照合します。B17 — ウィザードが自動作成する接続・capability host・ロール割当の範囲は Learn に列挙がないため、以下の期待値を初回に照合します。
 
@@ -172,7 +242,19 @@ unset OLD_KEY
 | `storageConnections` | Storage の接続名 |
 | `vectorStoreConnections` | AI Search の接続名 |
 
-接続の認証方式だけを確認し、資格情報を表示する操作は行いません。capability host は GUI に管理操作がないため、Cloud Shell の [Bash] に切り替えて REST の GET で確認します。配列へ入るのは ARM ID ではなく接続名です。
+接続の認証方式だけを確認し、資格情報を表示する操作は行いません。capability host は GUI に管理操作がないため、Cloud Shell の [Bash] に切り替えて REST の GET で確認します。配列へ入るのは ARM ID ではなく接続名です。以下の `<subscription-id>`・`<rg>`・`<account>`・`<project>` は、工程2の記録から置き換えます。初期値のまま実行しません。
+
+Bash へ戻った後、まず対象サブスクリプションを選択します。
+
+```bash
+az account set --subscription '<subscription-id>'
+```
+実行結果の確認ポイント: エラーなく完了することを確認します。
+
+```bash
+az account show --output table
+```
+実行結果の確認ポイント: テナントとサブスクリプションが今回の対象と一致することを確認します。
 
 ```bash
 az rest --method get --url 'https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/capabilityHosts?api-version=2025-06-01'
@@ -204,13 +286,30 @@ SMI はシステム割り当て MI、UMI はユーザー割り当て MI です�
 
 不足する Azure RBAC ロールは、表のリソース／コンテナーのスコープで追加します。
 
-1. 対象の [アクセス制御 (IAM)] を開きます。
-2. [ロールの割り当て] で既存の主体とロールを照合します。
-3. 不足がある場合だけ [追加] > [ロールの割り当ての追加] を選択します。
-4. 表のロールを選択します。
-5. [メンバー] で対象 MI（Foundry User の行だけ開発担当者）を選択します。
-6. [レビューと割り当て] でスコープと主体を確認します。
-7. [レビューと割り当て] を選択します。
+1. Azure portal で下表の入口から対象のリソースまたはコンテナーを開きます。
+2. [アクセス制御 (IAM)] を選択します。
+
+| 割当スコープ | IAM を開く入口 |
+|---|---|
+| Cosmos DB account / Storage account / AI Search | ポータル上部でリソース名を検索 → 対象を選択 → [アクセス制御 (IAM)] |
+| Storage の Blob コンテナー | 対象 Storage → [データ ストレージ] → [コンテナー] → 対象コンテナー → [アクセス制御 (IAM)] |
+| Foundry project | 工程2で特定した project の Azure リソース → [アクセス制御 (IAM)] |
+
+
+3. [ロールの割り当て] タブで既存の主体・ロール・スコープを照合します。
+4. 不足がある場合だけ [追加] > [ロールの割り当ての追加] を選択します。
+5. ロール名で検索し、上の期待値表のロールを選択します。
+6. [次へ] で [メンバー] へ進みます。
+7. MI の行は [アクセスの割り当て先] で [マネージド ID] を選択します（Foundry User の行はユーザーを選択）。
+8. [メンバーを選択する] を開きます。
+9. サブスクリプションと対象 MI を選択し、[選択] を押します。
+10. 表示された主体を、工程2で控えた principal ID と照合します。
+11. [レビューと割り当て] を選択します。
+12. 確認画面でロール・主体・スコープを見直します。
+13. 再度 [レビューと割り当て] を選択します。
+14. [ロールの割り当て] に戻り、追加した割り当てを確認します。
+
+> **Note** project MI が候補に出ない場合は、表示名だけで似た account MI を選ばず、対象 project・principal ID・割当権限を確認します。未生成のコンテナーや特定できない主体は B17 として保留します。
 
 > **補足** Cosmos DB のデータ面 RBAC は Azure portal では管理できません。`enterprise_memory` のロールだけは IAM で代用せず、GUI にない操作として Cloud Shell（Bash）を使います。データベース／Blob コンテナーが未生成なら架空のスコープに割り当てず、host の失敗を4.5で確認します。
 
@@ -223,6 +322,8 @@ az cosmosdb sql role definition list --resource-group '<rg>' --account-name '<co
 az cosmosdb sql role assignment list --resource-group '<rg>' --account-name '<cosmos-account>' --output json
 ```
 実行結果の確認ポイント: project MI に `enterprise_memory` スコープの割当が存在するか照合します。
+
+不足がない場合は次の作成コマンドを飛ばします。不足時は上で取得したロール定義 ID と project MI の principal ID を置換します。
 
 ```bash
 az cosmosdb sql role assignment create --resource-group '<rg>' --account-name '<cosmos-account>' --role-definition-id '<built-in-data-contributor-role-id>' --principal-id '<project-mi-principal-id>' --scope '/dbs/enterprise_memory'
@@ -240,11 +341,18 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 ```
 実行結果の確認ポイント: Storage の `<storage-resource-id>/blobServices/default` と Search の ARM ID に対して個別に実行し、利用できるログカテゴリを確認します。
 
-1. 各対象の [監視] > [診断設定] を開きます。
-2. Storage では Blob service を選択します。
-3. 同じ送信設定がなければ [診断設定の追加] を選択します。
-4. 下表のカテゴリと宛先を入力します。
-5. [保存] を選択します。
+1. Azure portal で第3章の Storage を開きます。
+2. [監視] > [診断設定] を開きます。
+3. Blob service の診断設定を選択します。
+4. 既存設定のログカテゴリと送信先 LAW を確認します。
+5. 同じ送信設定がなければ [診断設定の追加] を選択します。
+6. 設定名に `diag-agentgov-law` を入力します。
+7. 下表の Storage のログカテゴリを選択します。
+8. [Log Analytics ワークスペースへの送信] をオンにします。
+9. 検証用サブスクリプションと第1章の専用 LAW を選択します。
+10. [保存] を選択します。
+11. 設定を開き直し、カテゴリと送信先を照合します。
+12. 第3章の AI Search を開き、[監視] > [診断設定] で同じ流れを繰り返します（ログは下表の Search 用を選択）。
 
 | 項目 | 値 |
 |---|---|
@@ -256,12 +364,12 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 
 ### 5. モデルを配置する
 
-1. 対象 project の [検出] を開きます。
-2. [モデル] を開きます。
+1. Microsoft Foundry の左上で今回の project を確認します。
+2. 右上の [検出] を選択し、左側の [モデル] を開きます。
 3. `gpt-5-mini` を検索します。
-4. [配置] で提示される構成を確認します。
+4. 検索結果の `gpt-5-mini` を開き、[配置] で提示される構成を確認します。
 5. 下表の条件を満たす場合だけ配置を確定します。
-6. 配置名とモデルのバージョンを非公開の記録に残します。
+6. 配置の完了を待ち、配置名とモデルのバージョンを非公開の記録に残します。
 
 | 項目 | 値・確認内容 |
 |---|---|
@@ -282,8 +390,14 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 5. エージェントのモデルに前項の配置を選びます。
 6. 指示欄に下記の文字列を入力します。
 7. ツールが追加されていないことを確認します。
-8. プレイグラウンドのチャットに合成入力を送ります。
-9. 応答と、再度開いたときに保持されている設定を記録します。
+8. 設定を保存した状態でエージェント一覧へ戻り、`governance-lab-agent` を開き直します。
+9. 名前・モデル配置・指示・ツールなしの状態が保持されていることを確認します。
+10. プレイグラウンドのチャット入力欄に、下の2つ目のコードブロックにある架空の会議メモを貼り付けます。
+11. 送信ボタンを選択します。
+12. 応答を待ち、日時と議題が入力内容に沿っていることを確認します。
+13. 試験時刻・project・エージェント名・配置名・結果を非公開の証跡に記録します。
+
+> **Note** 要確認: エージェント設定の保存が自動か、保存ボタンを押す方式かは初回に照合します。未保存の表示が残る場合は一覧に戻らず、表示された保存操作を済ませます。保存操作とエージェントの公開は別で、本章では公開を行いません。
 
 ```text
 合成データだけを扱う検証用アシスタントです。登録した許可済みツール以外を使わず、不明な内容は不明と回答してください。
@@ -301,13 +415,34 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 
 ### 7. C08 の初回到達を確認する
 
-応答確認の直後に、試験時刻と対象 project を照合します。Data Explorer の閲覧権限は、この節末尾の方法で検証担当者へ付与してから開きます。
+応答確認の直後に、試験時刻と対象 project を照合します。Data Explorer の閲覧権限は、直下の確認を済ませてから開きます。
 
-1. Cosmos DB の [Data Explorer] を開きます。
-2. `enterprise_memory` の `<project-id>-` 接頭辞を持つコンテナーの生成を確認します。
-3. 第1章の LAW の [ログ] で Storage と Search の試験時刻の要求を確認します。
-4. 対象リソース・操作・認証主体を照合し、Foundry からの要求の成功／拒否を記録します。
-5. 許可外 IP の Cloud Shell から、許可 IP と同等の権限で対象の Foundry データ面を呼び、ネットワーク拒否を確認します。
+**Data Explorer を開く前の準備**
+
+工程4の Cosmos DB データロール定義の照会で、ロール名を `Cosmos DB Built-in Data Reader` として ID を確認します。既存割当を確認し、不足時だけ同工程の割当方法で検証担当者に `/dbs/enterprise_memory` の閲覧ロールを付与します。この場合の principal ID は人のユーザーのオブジェクト ID です。project MI の ID や Data Contributor を流用しません。
+
+1. Azure portal で第3章の Cosmos DB アカウントを開きます。
+2. 左側メニューの [Data Explorer] を選択します。
+3. データベース一覧で `enterprise_memory` を展開し、下表のコンテナーの生成と今回の project との対応を確認します。
+4. ポータル上部の検索から第1章の LAW を開きます。
+5. 左側メニューの [ログ] を選択します。
+6. クエリ編集画面で、保存先テーブルと試験時刻を確認します。
+7. 下のクエリ例で Storage と Search の要求を個別に確認します。
+8. 対象リソース・操作・認証主体を照合し、Foundry からの要求の成功／拒否を記録します。
+9. 許可外 IP 試験の API・有効な認証・比較条件が確定している場合だけ、Cloud Shell から対象の Foundry データ面を呼びます。未確定の場合は実行せず該当行を Pending にします。
+
+クエリの `<log-table-name>` は実在するテーブル名、`<target-resource-id>` はログに記録された対象リソース ID に置換します。Storage は Blob service の ID で記録される場合があるため、account の ID と混同しません。
+
+```kusto
+table("<log-table-name>")
+| where TimeGenerated > ago(2h)
+| where _ResourceId =~ "<target-resource-id>"
+| order by TimeGenerated desc
+| take 20
+```
+実行結果の確認ポイント: [実行] を選択し、今回の試験時刻のレコードを確認します。件数だけでは成功にせず、結果コードと Foundry MI の主体情報を照合します。2時間より前の試験は期間を調整します。
+
+> **Note** 要確認: ログ画面のクエリ編集モードへの切替、実際のテーブル名・結果列・主体列は初回に照合します。テーブルがない、対応する要求がない、主体を特定できない場合は Pending です。
 
 | 対象 | 初回到達の証拠 |
 |---|---|
@@ -409,34 +544,38 @@ Standard は4.4の完了条件を満たして第5章へ進みます。Basic に�
 
 ### 出典
 
-- 出典: [Foundry リソースの GUI 作成](https://learn.microsoft.com/ja-jp/azure/ai-services/multi-service-resource)（取得日 2026-09-15）
-- 出典: [接続の種類と作成](https://learn.microsoft.com/ja-jp/azure/foundry/how-to/connections-add)（取得日 2026-09-15）
-- 出典: [Standard setup](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-15）
+- 出典: [Cloud Shell のシェル切替](https://learn.microsoft.com/en-us/azure/cloud-shell/use-the-shell-window)（取得日 2026-09-20）
+- 出典: [Set-AzContext](https://learn.microsoft.com/en-us/powershell/module/az.accounts/set-azcontext)（取得日 2026-09-20）
+- 出典: [Log Analytics の操作](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/log-analytics-tutorial)（取得日 2026-09-20）
+
+- 出典: [Foundry リソースの GUI 作成](https://learn.microsoft.com/ja-jp/azure/ai-services/multi-service-resource)（取得日 2026-09-20）
+- 出典: [接続の種類と作成](https://learn.microsoft.com/ja-jp/azure/foundry/how-to/connections-add)（取得日 2026-09-20）
+- 出典: [Standard setup](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-20）
 - 出典: [環境セットアップ](https://learn.microsoft.com/ja-jp/azure/foundry/agents/environment-setup)（取得日 2026-09-15）
-- 出典: [ローカル認証の無効化](https://learn.microsoft.com/ja-jp/azure/ai-services/disable-local-auth)（取得日 2026-09-15）
+- 出典: [ローカル認証の無効化](https://learn.microsoft.com/ja-jp/azure/ai-services/disable-local-auth)（取得日 2026-09-20）
 - 出典: [capability host](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/capability-hosts)（取得日 2026-09-15）
 - 出典: [ネットワークの選択肢](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/networking-options)（取得日 2026-09-15）
 - 出典: [Cosmos DB の IP 制限](https://learn.microsoft.com/ja-jp/azure/cosmos-db/how-to-configure-firewall)（取得日 2026-09-15）
 - 出典: [Storage ネットワークの制限事項](https://learn.microsoft.com/ja-jp/azure/storage/common/storage-network-security-limitations)（取得日 2026-09-15）
 - 出典: [AI Search の IP 制限](https://learn.microsoft.com/ja-jp/azure/search/service-configure-firewall)（取得日 2026-09-15）
-- 出典: [Foundry リソースとモデル配置](https://learn.microsoft.com/ja-jp/azure/foundry/tutorials/quickstart-create-foundry-resources)（取得日 2026-09-15）
-- 出典: [最初のエージェント](https://learn.microsoft.com/ja-jp/azure/foundry/quickstarts/get-started-code)（取得日 2026-09-15）
+- 出典: [Foundry リソースとモデル配置](https://learn.microsoft.com/ja-jp/azure/foundry/tutorials/quickstart-create-foundry-resources)（取得日 2026-09-20）
+- 出典: [最初のエージェント](https://learn.microsoft.com/ja-jp/azure/foundry/quickstarts/get-started-code)（取得日 2026-09-20）
 - 出典: [プレイグラウンド](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/concept-playgrounds)（取得日 2026-09-15）
 - 出典: [Foundry の GA 範囲](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/general-availability)（取得日 2026-09-15）
 
-- 出典: [Foundry 作成ウィザード](https://learn.microsoft.com/en-us/azure/ai-services/multi-service-resource)（取得日 2026-09-19）
-- 出典: [接続の種類](https://learn.microsoft.com/en-us/azure/foundry/how-to/connections-add)（取得日 2026-09-19）
-- 出典: [Standard setup の作成順と権限](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-19）
+- 出典: [Foundry 作成ウィザード](https://learn.microsoft.com/en-us/azure/ai-services/multi-service-resource)（取得日 2026-09-20）
+- 出典: [接続の種類](https://learn.microsoft.com/en-us/azure/foundry/how-to/connections-add)（取得日 2026-09-20）
+- 出典: [Standard setup の作成順と権限](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-20）
 - 出典: [公開 Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup)（取得日 2026-09-19）
 - 出典: [capability host の確認と Basic の分離](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/capability-hosts)（取得日 2026-09-19）
-- 出典: [キー無効化と反映の確認](https://learn.microsoft.com/en-us/azure/ai-services/disable-local-auth)（取得日 2026-09-19）
-- 出典: [Storage のリソース インスタンス規則](https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security-resource-instances)（取得日 2026-09-19）
+- 出典: [キー無効化と反映の確認](https://learn.microsoft.com/en-us/azure/ai-services/disable-local-auth)（取得日 2026-09-20）
+- 出典: [Storage のリソース インスタンス規則](https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security-resource-instances)（取得日 2026-09-20）
 - 出典: [Cosmos DB のネットワーク規則](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-firewall)（取得日 2026-09-19）
 - 出典: [Search の信頼サービス例外](https://learn.microsoft.com/en-us/azure/search/service-configure-firewall)（取得日 2026-09-19）
-- 出典: [Cosmos DB のデータ面 RBAC](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（取得日 2026-09-19）
-- 出典: [Azure Monitor の診断設定](https://learn.microsoft.com/en-us/azure/azure-monitor/platform/diagnostic-settings)（取得日 2026-09-19）
+- 出典: [Cosmos DB のデータ面 RBAC](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（取得日 2026-09-20）
+- 出典: [Azure Monitor の診断設定](https://learn.microsoft.com/en-us/azure/azure-monitor/platform/diagnostic-settings)（取得日 2026-09-20）
 
-- 出典: [Azure portal のロール割当](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/role-assignments-portal)（取得日 2026-09-15・第6章の既存根拠を引継ぎ）
+- 出典: [Azure portal のロール割当](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/role-assignments-portal)（取得日 2026-09-20・第6章の既存根拠を引継ぎ）
 - 出典: [Blob service のログカテゴリ](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/supported-logs/microsoft-storage-storageaccounts-blobservices-logs)（取得日 2026-09-15・第6章の既存根拠を引継ぎ）
 - 出典: [Search のログカテゴリ](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/supported-logs/microsoft-search-searchservices-logs)（取得日 2026-09-15・第6章の既存根拠を引継ぎ）
 

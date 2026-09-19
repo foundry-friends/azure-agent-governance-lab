@@ -2,6 +2,10 @@
 
 進め方: 第0章の事前確認後、この章を上から実施します。
 
+この章では、①ポータルと Cloud Shell の準備 → ②権限・利用条件の確認 → ③設定ファイル → ④リソースグループ → ⑤Log Analytics → ⑥予算アラートの順に進めます。各手順の「確認」で期待する状態になったことを確かめてから次へ進みます。
+
+> **画面の見え方** 「ポータル上部の検索」は Azure 全体のサービスを探す欄、「一覧の検索」は開いた画面内の対象を絞る欄です。左側メニューが折りたたまれている場合は展開してから項目を探します。手順中の `<略号>` などは自分の値に置き換え、山括弧は入力しません。画面と手順が違って進めない場合は、[1.5](#15-うまくいかない場合) に従って差分を記録します。
+
 > **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）
 
 > **Note** 所要時間の目安: RG・Log Analytics・予算の作成部分は 0.5h の参考値です。Cloud Shell の準備・権限確認・リソースプロバイダーの登録・モデルの登録も、初回の定例で順に確認します。メンバーの前日までの作業は前提にせず、終わらなければ次回へ引き継ぎます。記録先は第0章で用意した共有Excelです。
@@ -29,8 +33,13 @@
 | ブラウザ | Microsoft Edge・Google Chrome・Mozilla Firefox・Apple Safari（プライベートモード不可） |
 | 接続元 | 社内ネットワーク（Entra 条件付きアクセスで許可された IP） |
 
-1. Azure portal の右上にある [設定]（歯車のアイコン）を選択します。
-2. [Language + region] で言語に [日本語] を選択し、[適用] を選択します。
+1. ブラウザで [Azure portal](https://portal.azure.com) を開きます。
+2. 第0章で確認した検証用の個人アカウントでサインインします。
+3. ポータル右上の [設定]（歯車のアイコン）を選択します。
+4. 設定画面の [Language + region]（[言語 + 地域]）を選択します。
+5. [Language]（[言語]）の一覧で [日本語] を選択します。
+6. [適用] を選択します。
+7. 設定画面を再度開き、言語が [日本語] になっていることを確認します。
 
 > **補足** 本手順の画面名と項目名は、Microsoft Learn 日本語版の表記（2026-09 時点）に合わせています。ポータルの表示言語が英語のままだと項目名が一致しないため、最初に日本語に揃えます。
 
@@ -40,29 +49,39 @@
 
 1. 社内ネットワークから Azure portal にサインインします。
 2. 上部ナビゲーションの [Cloud Shell] アイコンを選択します。
-3. [Bash] を選択します。すでに PowerShell で開いている場合は [Switch to Bash] を選択します。
-4. [使用を開始する] で [ストレージ アカウントのマウント] を選択し、検証用サブスクリプションを選んで [適用] を選択します。
-5. [ストレージ アカウントを作成します] を選択し、[次へ] を選択します。
+3. 初回のシェル選択画面で [Bash] を選択します。
+4. ストレージ選択画面で [ストレージ アカウントのマウント] を選択します。
+5. サブスクリプションの一覧で検証用サブスクリプションを選択します。
+6. [適用] を選択します。
+7. 部門で自動作成を使うと決めた場合は、[ストレージ アカウントを作成します] を選択します。
+8. [次へ] を選択します。
+9. 作成処理が終わり、Cloud Shell にコマンドを入力できる Bash のプロンプトが表示されるまで待ちます。
+
+> **Note** すでに Cloud Shell を利用している場合は、初回のストレージ選択画面が出ないことがあります。既存ストレージを作り直さず、シェルが Bash であることを確認して下の版確認へ進みます。PowerShell の場合はシェル切替メニューから [Bash] を選択します。既存ストレージを使う運用の場合は、下の配置先の確認を先に済ませます。
 
 > **画面の見え方** ストレージをマウントすると、Cloud Shell がストレージアカウントとファイル共有（5 GB）を作り、`$HOME` の内容を次回以降も保持します。このストレージアカウントには `ms-resource-usage:azure-cloud-shell` のタグが付き、Run の RG とは別のリソースグループに作られます。Run 終了時に削除しません。
 
 > **Note** 要確認: 部門共有サブスクリプションで Cloud Shell のストレージをどのリソースグループに置くか（既定の自動作成か、[既存のストレージ アカウントを選択] で `rg-agentgov-<略号>-shell` に自前で作るか）は 事前確認 で決めます。Azure Policy でストレージ作成が拒否される（`403 RequestDisallowedByPolicy`）場合は [ストレージ アカウントは不要]（エフェメラル）で進めますが、セッション終了でファイルが消えるため `.env` を毎回作り直します。
 
-6. 版を確認します。
+10. Cloud Shell の入力欄に次のコマンドを貼り付け、Enter を押します。
 
 ```bash
 az version
 ```
 実行結果の確認ポイント: `azure-cli` の版が表示されることを確認し、`evidence/` に記録します（Cloud Shell は月次更新のため）。
 
-7. 検証用サブスクリプションを既定にします。
+11. ポータル上部の検索に「サブスクリプション」と入力します。
+12. 検索結果の [サブスクリプション] を選択します。
+13. 一覧から検証用サブスクリプションを選択します。
+14. [概要] に表示されたサブスクリプション ID を非公開の作業メモに控えます。
+15. Cloud Shell に戻り、`<subscription-id>` を控えた ID に置き換えて次を実行します。
 
 ```bash
 az account set --subscription "<subscription-id>"
 ```
 実行結果の確認ポイント: エラーが出ないことを確認します。設定は `~/.azure/azureProfile.json` に保存され、次のセッションでも有効です。
 
-8. 既定のサブスクリプションとテナントを照合します。
+16. 次のコマンドで既定のサブスクリプションとテナントを照合します。
 
 ```bash
 az account show --output table
@@ -73,14 +92,55 @@ az account show --output table
 
 > **Note** 要確認: Learn には「デバイス準拠やハイブリッド参加を要求する条件付きアクセスは Cloud Shell では非対応」と記載があります。社内の条件付きアクセスがネームドロケーション（IP）だけであれば影響しない想定ですが、事前確認 で Cloud Shell が開けることを確認します。
 
-9. このリポジトリを Cloud Shell の `$HOME` に取得します。
+### 手順リポジトリの取得
+
+1. ブラウザでチームから案内された GitHub の手順リポジトリを開きます。
+2. URL の `github.com/` の次の部分から所有者名を確認します（以下の `<owner>` に使用）。
+3. Private の場合は、Cloud Shell で次を実行します（Public の場合は手順6へ進みます）。
 
 ```bash
-git clone https://github.com/<owner>/azure-agent-governance-lab.git
+gh auth login --hostname github.com --git-protocol https --web
 ```
-実行結果の確認ポイント: `azure-agent-governance-lab` ディレクトリができることを確認します。以降のコマンドはすべてこのディレクトリで実行します（`cd ~/azure-agent-governance-lab`）。
+実行結果の確認ポイント: ブラウザ認証の案内と一時コードが表示されることを確認します。Git の認証にも使うか質問された場合は Yes を選択します。
 
-> **Note** リポジトリが Private の間は、`gh auth login --web` で GitHub にサインインしてから `git clone` します。Public 化後は不要です。
+4. ターミナルが案内した URL をブラウザで開き、一時コードを入力して GitHub の認証を完了します。
+5. Cloud Shell に戻り、認証成功の表示を確認します。
+6. 取得先を Cloud Shell のホームディレクトリに移します。
+
+```bash
+cd ~
+```
+実行結果の確認ポイント: エラーなくプロンプトに戻ることを確認します。
+
+7. `<owner>` を手順2で確認した所有者名に置き換えて実行します。
+
+```bash
+git clone --branch develop "https://github.com/<owner>/azure-agent-governance-lab.git"
+```
+実行結果の確認ポイント: ファイルの取得が完了し、認証エラーや `Repository not found` が出ていないことを確認します。
+
+8. 取得したディレクトリへ移動します。
+
+```bash
+cd ~/azure-agent-governance-lab
+```
+実行結果の確認ポイント: エラーなく移動できることを確認します。以降のコマンドはこのディレクトリで実行します。
+
+9. 手順書の版を確認します。
+
+```bash
+git status --short --branch
+```
+実行結果の確認ポイント: ブランチが `develop` であることを確認します。
+
+10. 検証に使うコミットを控えます。
+
+```bash
+git rev-parse HEAD
+```
+実行結果の確認ポイント: 表示された SHA を非公開の証跡に記録し、検証チームの指定版と照合します。
+
+> **Note** すでに同名ディレクトリがある場合は再度 clone せず、手順8から版と変更の有無を確認します。指定版と異なる場合は担当者に確認してから進めます。自分の `.env` や証跡を削除して取り直しません。
 
 ### 権限
 
@@ -94,10 +154,16 @@ Standard setup の公式テンプレート 41 を展開する実施者には、�
 | 予算アラートの作成（このセクション） | 所有者。共同作成者と Cost Management 共同作成者は自分が作った予算のみ操作できます |
 | モデルのクォータ閲覧 | **Cognitive Services Usages Reader**（サブスクリプション スコープ）。増枠要求は所有者か共同作成者 |
 
-1. Azure portal で [サブスクリプション] を検索して選択し、検証用サブスクリプションを開きます。
-2. 左側のナビゲーションから [アクセス制御 (IAM)] を選択します。
-3. [アクセスの確認] タブで [マイ アクセスの表示] を選択します。
-4. 表示された割り当てに上表のロールが含まれることを確認します。
+1. ポータル上部の検索に「サブスクリプション」と入力します。
+2. 検索結果の [サブスクリプション] を選択します。
+3. 一覧から検証用サブスクリプションを選択します。
+4. 左側メニューの [アクセス制御 (IAM)] を選択します。
+5. [アクセスの確認] タブを選択します。
+6. [マイ アクセスの表示] を選択します。
+7. 割り当ての一覧で、ロール名と割り当てスコープを上表の必要な操作と照合します。
+8. 不足する操作権限がある場合は、該当ロール・スコープ・対象工程を共有Excelに記録します。
+
+> **画面の見え方** PIM を利用している環境では、[アクセスの確認] に直接ロール一覧が表示される場合があります。「資格がある」だけのロールは有効化済みとは限りません。部門で決めた PIM の有効化手順を済ませ、有効な割り当てを確認します。表のロールすべてを一律に追加するのではなく、各操作の権限を既存ロールで満たすか確認します。
 
 > **画面の見え方** このスコープでの割り当てと、上位（管理グループ）から継承した割り当てが一覧に出ます。下位（リソースグループ）だけに付いた割り当ては出ません。リソースグループを作った後に、RG のスコープでも同じ手順で確認します（[1.3](#rg-スコープの権限の再確認)）。
 
@@ -129,14 +195,17 @@ Standard setup の公式テンプレート 41 を展開する実施者には、�
 1. [サブスクリプション] で検証用サブスクリプションを開きます。
 2. 左側のナビゲーションの [設定] から [リソース プロバイダー] を選択します。
 3. 検索ボックスに名前空間（例 `Microsoft.CognitiveServices`）を入力します。
-4. 該当行を選択し、[登録] を選択します。
-5. 初回 で使う上表の名前空間（第7章・第9章の行を除く）について 3〜4 を繰り返します。
+4. 該当行の登録状態を確認します。
+5. 未登録の場合は、その行を選択します（登録済みの場合は手順8へ進みます）。
+6. 上部の [登録] を選択します。
+7. [更新] を選択して状態を再確認します。
+8. 検索欄を次の名前空間に入れ替え、初回で使う上表の名前空間（第7章・第9章の行を除く）について手順3〜7を繰り返します。
 
 > **画面の見え方** 状態の列が [登録解除] から「登録中」に変わり、数分で [登録済み] になります。登録はリージョンごとに順に進むため、「登録中」のままでも次の作業を止める必要はありません。
 
 > **補足** 登録には `/register/action` 権限が必要で、共同作成者と所有者に含まれます。テンプレートのデプロイ時に使う名前空間は自動登録されますが、監視やセキュリティのように「テンプレートに書かれていない補助リソース」の名前空間は手動で登録します。Learn は「使う準備ができてから登録する」ことを勧めているため、第7章・第9章の名前空間は該当セクションで登録します。
 
-6. Cloud Shell で登録状態を照合します。
+9. Cloud Shell で登録状態を照合します。
 
 ```bash
 az provider list --query "[?registrationState!='Registered'].{Provider:namespace, Status:registrationState}" --output table
@@ -147,18 +216,26 @@ az provider list --query "[?registrationState!='Registered'].{Provider:namespace
 
 このリポジトリのモデルは gpt-5-mini（バージョン 2025-08-07・Global Standard）です。Learn のリージョン別提供表で Japan East（`japaneast`）の Global Standard に提供があります。
 
-1. Microsoft Foundry ポータル <https://ai.azure.com> に移動し、[New Foundry] のトグルがオンであることを確認します。
-2. 左側のナビゲーションから [Manage] を選択し、[Quota] を開きます。
-3. [Token per minute] のタブで Japan East の gpt-5-mini の割当を確認します。
+1. 別のブラウザタブで [Microsoft Foundry](https://ai.azure.com) を開きます。
+2. 検証用アカウントでサインインします。
+3. [New Foundry] のトグルがオンであることを確認します。
+4. 検証用サブスクリプションの既存プロジェクトを利用できる場合は、左上のプロジェクト名で対象が正しいことを確認します。
+5. **右上**のナビゲーションから [Manage] を選択します。
+6. 左側メニューの [Quota] を選択します。
+7. [Token per minute] タブを選択します。
+8. Japan East・gpt-5-mini・Global Standard に対応する割当と使用量を確認します。
+9. 利用可能な残量を非公開の証跡に控えます。
+
+> **Note** この GUI 手順の公式前提には Foundry project が含まれます。初回でまだプロジェクトがなく、作成画面が表示される場合は、確認のためだけに新規作成せず、下の Cloud Shell でサブスクリプションのクォータを確認します。GUI の照合は第4章のプロジェクト作成後に行います。画面に出ないだけでクォータなしとは判断しません。
 
 > **Note** gpt-5 系のモデルは Learn に「登録（registration）が必要」と明記されています。事前確認 で登録の要否と手続きを確認し、間に合わない場合は 第4章の「うまくいかない場合」で代替モデルを選びます。
 
-4. Cloud Shell で使用量と上限を照合します。
+10. Cloud Shell で使用量と上限を照合します。
 
 ```bash
 az cognitiveservices usage list --location japaneast --output table
 ```
-実行結果の確認ポイント: gpt-5-mini の Global Standard に相当する行があり、上限（limit）が 0 でないことを確認します。
+実行結果の確認ポイント: gpt-5-mini の Global Standard に相当する行があり、上限（limit）と使用量を確認します。上限が 0 でなくても使い切っていれば追加デプロイできないため、必要な残量があるかを確認します。
 
 > **Note** 要確認: この出力で gpt-5-mini を表す `name.value` の形式は Learn に例がありません。初回で実物を記録します。
 
@@ -166,7 +243,11 @@ az cognitiveservices usage list --location japaneast --output table
 
 1. 社内の公開 IPv4 アドレス範囲（CIDR）の一覧をネットワーク担当者から入手します。
 2. 入手した CIDR を `.env` の `ALLOWED_IP_RANGES` に JSON 配列で書きます（[1.3](#設定ファイルenv)）。
-3. 既存の Entra 条件付きアクセスと継続的アクセス評価（CAE）の設定内容を確認し、変更しないことをチームで共有します。
+3. Entra 管理担当者に、検証用アカウントの接続元制限・MFA・端末要件・CAE の適用条件を確認します。
+4. 受け取った条件と、社内 PC からのサインイン結果を非公開の証跡に記録します。
+5. 条件付きアクセスや CAE の設定は変更せずに検証することをチームで共有します。
+
+> **補足** この工程は既存設定の管理担当者への確認です。検証者に Entra 管理権限を追加して設定変更をさせる工程ではありません。
 
 設計と各リソースへの適用は [第0章](00-before-start.md) を参照します。
 
@@ -207,28 +288,39 @@ code .env
 ```
 実行結果の確認ポイント: 画面上部にエディターが開くことを確認します。保存は Ctrl+S、閉じるのは Ctrl+Q です。
 
-3. 下表の値を入力して保存します。
+3. エディターで、下表に対応する変数の `=` の右側を自分の値に置き換えます。
+4. 値を囲む引用符を残し、`=` の前後に空白を入れていないことを確認します。
+5. Ctrl+S で保存します。
+6. Ctrl+Q でエディターを閉じます。
 
 | 項目 | 値 |
 |---|---|
-| AZURE_SUBSCRIPTION_ID・AZURE_TENANT_ID | 検証用サブスクリプションとテナントの ID（[サブスクリプション] の [概要] で確認） |
+| AZURE_SUBSCRIPTION_ID・AZURE_TENANT_ID | 上で実行した `az account show` の ID と TenantId。ポータルで確認した検証用サブスクリプションと照合済みの値 |
 | OPERATOR_CODE | 実施者略号 |
 | AZURE_RESOURCE_GROUP | `rg-agentgov-<略号>-run1` |
 | AZURE_LOCATION | `japaneast` |
 | AZURE_DEPLOYMENT_NAME | デプロイ名（例 `agentgov-run1`） |
-| LOG_ANALYTICS_WORKSPACE_NAME・LOG_ANALYTICS_RESOURCE_ID | 作成予定の名前。ID は作成後にこのファイルへ追記 |
+| LOG_ANALYTICS_WORKSPACE_NAME | `law-agentgov-<略号>-run1` |
+| LOG_ANALYTICS_RESOURCE_ID | 今はプレースホルダーを残し、ワークスペース作成後に既存行を置換 |
 | BUDGET_AMOUNT_USD・BUDGET_CONTACT_EMAIL・BUDGET_START_DATE | 作成する予算の値 |
 | DELETE_AFTER | 削除予定日（`YYYY-MM-DD`） |
 | ALLOWED_IP_RANGES | 社内公開 IPv4 CIDR の JSON 配列（例 `'["203.0.113.0/24"]'`。全許可は不可） |
 
 > **補足** まだ作成していないリソースの ID はプレースホルダーのまま残します。作成する工程で追記します。
 
-4. 設定を読み込みます。
+7. Cloud Shell のターミナルで設定を読み込みます。
 
 ```bash
 source .env
 ```
-実行結果の確認ポイント: `echo "$AZURE_RESOURCE_GROUP"` で入力した RG 名が表示されることを確認します。API キーや接続文字列を書いていないことも確認します。
+実行結果の確認ポイント: 構文エラーが表示されないことを確認します。API キーや接続文字列は記入しません。
+
+8. 読み込んだ RG 名を確認します。
+
+```bash
+echo "$AZURE_RESOURCE_GROUP"
+```
+実行結果の確認ポイント: 自分の `rg-agentgov-<略号>-run1` が表示され、プレースホルダーが残っていないことを確認します。
 
 > **Note** `.env` と `*.local.json` は `.gitignore` 済みで、コミットしません。
 
@@ -244,19 +336,34 @@ source .env
 | リソース グループ | `rg-agentgov-<略号>-run1` |
 | リージョン | Japan East |
 
-4. [次へ: タグ] を選択し、[命名と入力値](#命名と入力値) のタグ 4 つを名前と値で入力します。
-5. [確認および作成] を選択し、検証に成功したら [作成] を選択します。
-6. 上部の [通知]（ベルのアイコン）から [リソース グループに移動] を選択します。
+4. [確認および作成] を選択します。
+5. 確認画面でサブスクリプション・RG 名・リージョンを照合します。
+6. 検証に成功したら [作成] を選択します。
+7. ポータル上部の検索から [リソース グループ] を開きます。
+8. 一覧上部の [更新] を選択します。
+9. 作成した `rg-agentgov-<略号>-run1` を選択します。
+10. [概要] で名前・サブスクリプション・リージョンを確認します。
+11. [概要] の [タグの追加] を選択します。
+12. 下表の名前と値を1組ずつ入力します。
 
-> **画面の見え方** リソースグループの [概要] にリージョンとタグが表示されます。タグを付け忘れた場合は [概要] の [タグの追加] から名前と値を入力し [保存] を選択します。
+| 名前 | 値 |
+|---|---|
+| purpose | `agent-governance-lab` |
+| run | `1` |
+| operator | 自分の実施者略号 |
+| deleteAfter | 合意した削除予定日（`YYYY-MM-DD`） |
 
-> **Note** 要確認: 作成ウィザードの [タグ] タブの手順は Learn に記載がありません（Learn は作成後の [タグの追加] を案内）。初回で実際の画面に合わせます。
+13. [保存] を選択します。
+14. [概要] に戻り、4つのタグが表示されることを確認します。
+
+> **Note** 組織の Policy で作成時のタグが必須の場合は、作成画面の [タグ] で上表を入力してから [確認および作成] へ進みます。作成時の画面に該当欄がなく拒否される場合は、エラーを記録して管理者へ相談します。
 
 ### RG スコープの権限の再確認
 
 1. 作成したリソースグループの左側のナビゲーションから [アクセス制御 (IAM)] を選択します。
-2. [アクセスの確認] タブで [マイ アクセスの表示] を選択します。
-3. [1.2 の権限表](#権限) のロールが継承を含めて表示されることを確認します。`roleAssignments/write` を持つロールが無い場合は 次の章に進まず [1.5](#15-うまくいかない場合) に従います。
+2. [アクセスの確認] タブを選択します。
+3. [マイ アクセスの表示] を選択します。
+4. RG 内の作成・ロール割り当てに必要な権限を、[1.2 の権限表](#権限) と照合します。サブスクリプションだけで確認するクォータ閲覧権限とは分けて判定します。`roleAssignments/write` を持つロールが無い場合は 次の章に進まず [1.5](#15-うまくいかない場合) に従います。
 
 ### Log Analytics ワークスペース
 
@@ -271,23 +378,57 @@ source .env
 | 名前 | `law-agentgov-<略号>-run1` |
 | リージョン | Japan East |
 
-4. [次へ: タグ] を選択し、タグ 3 つ（`purpose`・`run`・`operator`）を入力します。
-5. [確認と作成] を選択し、[作成] を選択します。
-6. 作成後にワークスペースを開き、左側のナビゲーションの [設定] から [使用とコストの見積もり] を選択します。
-7. 上部の [データ保持] を選択し、保持期間が 30 日であることを確認して [OK] を選択します。
+4. [タグ] タブを開きます。
+5. RG と同じ `purpose`・`run`・`operator` の3組を入力します。
+6. [確認と作成] を選択します。
+7. 対象が自分の RG、リージョンが Japan East であることを確認します。
+8. [作成] を選択します。
+9. デプロイが完了するまで待ちます。
+10. ポータル上部の検索から [Log Analytics ワークスペース] を開きます。
+11. 一覧から `law-agentgov-<略号>-run1` を選択します。
+12. 左側メニューの [設定] にある [使用とコストの見積もり] を選択します。
+13. ページ上部の [データ保持] を選択します。
+14. 日数が 30 日であることを確認します（異なる場合はスライダーを 30 日に合わせます）。
+15. [OK] を選択します。
+16. 再度 [データ保持] を開き、30 日が保存されていることを確認します。
 
 > **補足** 既定の従量課金制（Analytics Logs）は 31 日分の保持が取り込み価格に含まれるため、30 日未満にしても費用は下がりません。既定の 30 日のままにします。第6章では診断設定と Application Insights がこのワークスペースを参照します。
 
-8. ワークスペースの [概要] にある [要点] の [JSON ビュー] を選択し、上部に表示されるリソース ID を控えます。
-9. 控えた ID を `.env` の `LOG_ANALYTICS_RESOURCE_ID` に記録します（作成済みの `.env` に追記）。
+17. Cloud Shell で次の読み取りコマンドを実行します。
+
+```bash
+az monitor log-analytics workspace show --resource-group "$AZURE_RESOURCE_GROUP" --workspace-name "$LOG_ANALYTICS_WORKSPACE_NAME" --query id --output tsv
+```
+実行結果の確認ポイント: `/subscriptions/` から始まり、末尾が自分のワークスペース名であるリソース ID が1行表示されることを確認します。ワークスペース ID（GUID）とは別の値です。
+
+18. Cloud Shell で設定ファイルを開きます。
+
+```bash
+code .env
+```
+実行結果の確認ポイント: 作成済みの `.env` が開くことを確認します。
+
+19. `LOG_ANALYTICS_RESOURCE_ID` の既存行の値を、手順17のリソース ID に置き換えます。
+20. Ctrl+S で保存します。
+21. Ctrl+Q でエディターを閉じます。
+22. 更新した値をターミナルに読み込みます。
+
+```bash
+source .env
+```
+実行結果の確認ポイント: エラーが出ないことを確認します。値の一致は [1.4](#14-確認) で照合します。
 
 ### 予算アラート
 
 予算は RG スコープに作り、実績 50%・80%・100% と予測 100% でメール通知します。
 
-1. リソースグループの左側のナビゲーションから [予算] を選択します。
-2. [追加] を選択します。
-3. [予算を作成する] で下表の値を入力します。
+1. ポータル上部の検索で [リソース グループ] を開きます。
+2. 一覧から自分の `rg-agentgov-<略号>-run1` を選択します。
+3. 左側メニューの [予算] を選択します。
+4. ページ上部のスコープが自分の RG であることを確認します。
+5. [追加] を選択します。
+6. [予算を作成する] で、スコープが変わっていないことを確認します。
+7. 下表の値を入力します。
 
 | 項目 | 値 |
 |---|---|
@@ -296,18 +437,32 @@ source .env
 | リセット期間 | 月 |
 | 作成日 | 当月 1 日 |
 | 有効期限 | 検証期間の終了月末（例 3 か月後） |
-| 予算額 | 月予算（USD） |
+| 予算額 | 画面に表示された通貨で上長と合意した月予算 |
+| フィルター | 追加しない（自分の RG 全体を対象にする） |
 
-4. [次へ] を選択し、アラート条件を 4 行入力します。
+> **Note** 入力前に予算額欄の通貨を確認します。見積りと `.env` の `BUDGET_AMOUNT_USD` は USD です。画面が JPY などの場合は USD の数値をそのまま入力せず、担当者とその通貨の予算額を決めて非公開に記録します。USD 用の変数へ JPY 額を入れません。
 
-| 種類 | 予算の % | 通知先 |
-|---|---|---|
-| 実績 | 50 | 実施者のメールアドレス |
-| 実績 | 80 | 同上 |
-| 実績 | 100 | 同上 |
-| 予測 | 100 | 同上 |
+8. [次へ] を選択します。
+9. アラート条件の1行目で実績に相当する種類を選択します。
+10. しきい値に `50` を入力します（`0.5` ではありません）。
+11. 続く行にも種類としきい値を入力し、下表の4条件にします。
 
-5. 言語に [日本語] を選択し、[作成] を選択します。
+| 種類 | 予算の % |
+|---|---|
+| 実績（Actual） | 50 |
+| 実績（Actual） | 80 |
+| 実績（Actual） | 100 |
+| 予測（Forecasted） | 100 |
+
+12. 通知先メールアドレスの入力欄に、合意した実施者のメールアドレスを入力します。
+13. 通知先が4条件に適用されることを確認します。
+14. 通知メールの言語で [日本語] を選択します。
+15. スコープ・予算額・期間・4条件・通知先を見直します。
+16. [作成] を選択します。
+17. [予算] の一覧に作成した予算名が表示されることを確認します。
+18. 作成した予算名を選択し、保存された金額・期間・アラート設定を照合します。
+
+> **画面の見え方** 通知先はアラートの種類・割合とは別の入力欄です。行ごとにメールアドレスを入力する画面とは限りません。Action Group の選択欄が表示されても、この章ではメール通知だけを設定します。
 
 > **画面の見え方** [予算] の一覧に作成した予算が表示されます。作成直後は評価前のため、現在の支出は 0 または空欄です。コストは通常 8〜24 時間で反映され、予算は 24 時間ごとに評価されます。しきい値を超えると評価後 1 時間以内にメールが届きます。
 
@@ -320,24 +475,29 @@ source .env
 このセクションで確認するのは 費用・後片付けの確認（C10）のうち「予算通知が設定されていること」です。通知の実受信は、検証中に通知条件を満たした場合の結果を記録し、第10章へ引き継ぎます。条件に達していない場合は未発火と記録し、受信試験のために費用を増やしません。削除後の残存・費用は [第10章](10-cleanup-cost.md) で確認します。
 
 1. リソースグループの左側のナビゲーションから [予算] を選択します。
-2. 予算名・金額・リセット期間・アラート条件 4 行と通知先が [1.3](#予算アラート) の表と一致することを確認します。
-3. 左側のナビゲーションから [コスト分析] を選択し、スコープがこの RG になっていることを確認します。
+2. 一覧から自分の予算名を選択します。
+3. 予算名・通貨・金額・リセット期間・アラート条件4行と通知先を [1.3](#予算アラート) の入力内容と照合します。
+4. 自分のリソースグループの画面へ戻ります。
+5. 左側メニューの [コスト分析] を選択します。
+6. 表示されたスコープが自分の RG になっていることを確認します。
 
 > **画面の見え方** [コスト分析] は [累積コスト] のビューで開きます。作成直後はコストが未反映の場合があります。0円とデータなしを区別し、第10章の反映待ちの扱いに沿って日別・サービス別の推移を確認します。
 
-4. Cloud Shell で RG の設定を照合します。
+7. Cloud Shell で RG の設定を照合します。
 
 ```bash
 az group show --name "$AZURE_RESOURCE_GROUP" --query '{name:name,location:location,tags:tags}' --output json
 ```
 実行結果の確認ポイント: `location` が `japaneast`、タグ 4 つが入力どおりであることを確認します。
 
-5. Log Analytics の保持期間を照合します。
+8. Log Analytics の保持期間を照合します。
 
 ```bash
 az monitor log-analytics workspace show --resource-group "$AZURE_RESOURCE_GROUP" --workspace-name "$LOG_ANALYTICS_WORKSPACE_NAME" --query '{id:id,retentionInDays:retentionInDays,sku:sku.name}' --output json
 ```
 実行結果の確認ポイント: `retentionInDays` が `30`、`sku` が `PerGB2018`、`id` が `.env` の値と一致することを確認します。
+
+9. 確認スクリプトの現在の判定状態を確認します。
 
 ```bash
 bash scripts/verify.sh --section 1
@@ -345,6 +505,18 @@ bash scripts/verify.sh --section 1
 実行結果の確認ポイント: 現在は C10 が Pending であることを表示し、終了コード 2 で終わります（自動判定はしません）。
 
 [確認項目](../checks/README.md) ごとに実施日・Run・入力・期待結果・実結果・Pass / Fail / Pending を非公開の `evidence/` に記録します。未実施は Pending です。
+
+### この章の完了条件
+
+| 確認対象 | 次へ進める状態 |
+|---|---|
+| Cloud Shell と手順の版 | Bash で開ける。検証用サブスクリプション・テナント・指定コミットを照合済み |
+| 権限・プロバイダー | 直後の工程に必要な権限と登録状態を確認済み。不足は対象工程を停止して記録済み |
+| モデル | クォータを確認済み、または特定できない理由・担当・第4章着手前の確認事項を記録済み |
+| リソースグループ | 自分の RG が Japan East に存在し、タグ4つが一致 |
+| Log Analytics | 自分の RG に存在し、保持30日・従量課金制・リソース ID が一致 |
+| 予算 | 自分の RG スコープで金額・通貨・期間・4条件・通知先が保存済み |
+| 記録 | 実施結果と保留事項を記録済み。未実施を Pass にしていない |
 
 ## 1.5. うまくいかない場合
 
@@ -403,13 +575,17 @@ GUI で作ったものと同じ RG 内のリソースを、再現日や 2 回目
 > **Note** 要確認: Azure CLI の `az consumption budget` はコマンド群全体が Preview のため使いません。Bicep を RG 直下（`targetScope = 'resourceGroup'`）に配置する完成例は Learn に無く、ARM テンプレートリファレンスの記載に基づいています。任意の再現時に実機確認します。
 
 
-- 出典: [Azure リソース プロバイダー](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/resource-providers-and-types)（取得日 2026-09-16。D14 に伴う整合修正の根拠）
+### 出典
+
+- 出典: [Azure Cloud Shell エディターの使用](https://learn.microsoft.com/ja-jp/azure/cloud-shell/using-cloud-shell-editor)（取得日 2026-09-19）
+- 出典: [GitHub CLI: gh auth login](https://cli.github.com/manual/gh_auth_login)（取得日 2026-09-19）
+- 出典: [Azure リソース プロバイダー](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/resource-providers-and-types)（取得日 2026-09-19）
 - 出典: [LLM トークン制限](https://learn.microsoft.com/ja-jp/azure/api-management/llm-token-limit-policy)（取得日 2026-09-16。D14 に伴う整合修正の根拠）
-- 出典: [Azure portal でリソース グループを管理する](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/manage-resource-groups-portal)（取得日 2026-09-15）
-- 出典: [Azure portal を使用してリソースにタグを付ける](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/tag-resources-portal)（取得日 2026-09-15）
-- 出典: [Azure リソース プロバイダーと種類](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/resource-providers-and-types)（取得日 2026-09-15）
+- 出典: [Azure portal でリソース グループを管理する](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/manage-resource-groups-portal)（取得日 2026-09-19）
+- 出典: [Azure portal を使用してリソースにタグを付ける](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/tag-resources-portal)（取得日 2026-09-19）
+- 出典: [Azure リソース プロバイダーと種類](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/resource-providers-and-types)（取得日 2026-09-19）
 - 出典: [Resource providers for Azure services](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/azure-services-resource-providers)（取得日 2026-09-15）
-- 出典: [Azure portal でユーザーのアクセスを確認する](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/check-access)（取得日 2026-09-15）
+- 出典: [Azure portal でユーザーのアクセスを確認する](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/check-access)（取得日 2026-09-19）
 - 出典: [Azure built-in roles for Privileged](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/privileged)（取得日 2026-09-15）
 - 出典: [Azure built-in roles for Management and governance](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/management-and-governance)（取得日 2026-09-15）
 - 出典: [Foundry Agent Service: environment setup](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup)（取得日 2026-09-15）
@@ -418,22 +594,22 @@ GUI で作ったものと同じ RG 内のリソースを、再現日や 2 回目
 - 出典: [Role-based access control for Microsoft Foundry](https://learn.microsoft.com/en-us/azure/foundry/concepts/rbac-foundry)（取得日 2026-09-15）
 - 出典: [Model availability by region](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability)（取得日 2026-09-15）
 - 出典: [Foundry Agent Service limits, quotas, and regions](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/limits-quotas-regions)（取得日 2026-09-15）
-- 出典: [Manage and increase quotas](https://learn.microsoft.com/en-us/azure/foundry/how-to/quota)（取得日 2026-09-15）
+- 出典: [Manage and increase quotas](https://learn.microsoft.com/en-us/azure/foundry/how-to/quota)（取得日 2026-09-19）
 - 出典: [az cognitiveservices usage](https://learn.microsoft.com/en-us/cli/azure/cognitiveservices/usage)（取得日 2026-09-15）
-- 出典: [Log Analytics ワークスペースを作成する](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/quick-create-workspace)（取得日 2026-09-15）
-- 出典: [データ保持期間を構成する](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/data-retention-configure)（取得日 2026-09-15）
+- 出典: [Log Analytics ワークスペースを作成する](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/quick-create-workspace)（取得日 2026-09-19）
+- 出典: [データ保持期間を構成する](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/data-retention-configure)（取得日 2026-09-19）
 - 出典: [Log Analytics ワークスペースの削除と復旧](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/delete-workspace)（取得日 2026-09-15）
 - 出典: [Azure Monitor Logs cost calculations and pricing](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/cost-logs)（取得日 2026-09-15）
 - 出典: [az monitor log-analytics workspace](https://learn.microsoft.com/en-us/cli/azure/monitor/log-analytics/workspace)（取得日 2026-09-15）
-- 出典: [チュートリアル: 予算を作成して管理する](https://learn.microsoft.com/ja-jp/azure/cost-management-billing/costs/tutorial-acm-create-budgets)（取得日 2026-09-15）
+- 出典: [チュートリアル: 予算を作成して管理する](https://learn.microsoft.com/ja-jp/azure/cost-management-billing/costs/tutorial-acm-create-budgets)（取得日 2026-09-19）
 - 出典: [クイック スタート: コスト分析を使用する](https://learn.microsoft.com/ja-jp/azure/cost-management-billing/costs/quick-acm-cost-analysis)（取得日 2026-09-15）
 - 出典: [Microsoft.Consumption/budgets（ARM テンプレートリファレンス）](https://learn.microsoft.com/en-us/azure/templates/microsoft.consumption/budgets)（取得日 2026-09-15）
 - 出典: [az consumption budget](https://learn.microsoft.com/en-us/cli/azure/consumption/budget)（取得日 2026-09-15）
-- 出典: [Azure portal の設定を管理する](https://learn.microsoft.com/ja-jp/azure/azure-portal/set-preferences)（取得日 2026-09-15）
+- 出典: [Azure portal の設定を管理する](https://learn.microsoft.com/ja-jp/azure/azure-portal/set-preferences)（取得日 2026-09-19）
 - 出典: [Azure Cloud Shell overview](https://learn.microsoft.com/en-us/azure/cloud-shell/overview)（取得日 2026-09-15）
 - 出典: [Azure Cloud Shell features and tools](https://learn.microsoft.com/en-us/azure/cloud-shell/features)（取得日 2026-09-15）
 - 出典: [Azure Cloud Shell の使用を開始する（エフェメラル）](https://learn.microsoft.com/ja-jp/azure/cloud-shell/get-started/ephemeral)（取得日 2026-09-15）
-- 出典: [Get started with Azure Cloud Shell (new storage)](https://learn.microsoft.com/en-us/azure/cloud-shell/get-started/new-storage)（取得日 2026-09-15）
+- 出典: [Get started with Azure Cloud Shell (new storage)](https://learn.microsoft.com/en-us/azure/cloud-shell/get-started/new-storage)（取得日 2026-09-19）
 - 出典: [Persist files in Azure Cloud Shell](https://learn.microsoft.com/en-us/azure/cloud-shell/persisting-shell-storage)（取得日 2026-09-15）
 - 出典: [Azure Cloud Shell FAQ and troubleshooting](https://learn.microsoft.com/en-us/azure/cloud-shell/faq-troubleshooting)（取得日 2026-09-15）
 - 出典: [Deploy Cloud Shell in a virtual network（標準の Cloud Shell が Microsoft ネットワークで動く記述）](https://learn.microsoft.com/en-us/azure/cloud-shell/vnet/overview)（取得日 2026-09-15）
