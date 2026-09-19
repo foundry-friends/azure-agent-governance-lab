@@ -87,6 +87,8 @@ flowchart LR
 
 ## 結果の記録
 
+チームで使う [Issue記録ガイド・記載例](docs/ISSUE_RECORDING_GUIDE.md) と [非公開の証跡テンプレート](checks/evidence_template.md) を用意しています。定例中は全員が共有Excelへ記録します。手順修正や計画見直しが必要な課題をGitHub Issueへ転記し、以後はIssueを正本として皆でクローズまで管理します。ExcelにはIssueリンクと「GitHubで管理」を残します。準備は[第0章](docs/00-before-start.md)を参照します。
+
 [確認項目 C01〜C10](checks/README.md) は番号を維持し、実施する章だけを整理しました。設定の存在・動作成功・拒否・未実施を区別します。記録は非公開の `evidence/` に残し、未実施は Pending とします。
 
 一つの体験を終えるまで同じ RG を使います。日をまたぐ場合は予算と保管期間を確認します。途中で中止する場合は [第10章](docs/10-cleanup-cost.md) で片付けます。削除後に再現したいときだけ、第0章から新しい一周を始めます。
