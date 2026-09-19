@@ -18,7 +18,7 @@
 
 ## 6.2. 前提
 
-第4章の停止条件を解決し、第5章の設定確認が終わってから実行します。第1章の専用 Log Analytics ワークスペース（以下 LAW）、Foundry、Storage、Cosmos DB、AI Search、Key Vault の ARM ID を用意します。共有の別ワークスペースは変更しません。
+第4章の C01・C08 初回結果（Basic 分岐時は対象外・失敗の記録を含む）と第5章の設定確認が揃ってから実行し、第4章で作った Storage／Search の診断設定は重複作成せず引き継ぎます。第1章の専用 Log Analytics ワークスペース（以下 LAW）、Foundry、Storage、Cosmos DB、AI Search、Key Vault の ARM ID を用意します。共有の別ワークスペースは変更しません。
 
 ### この章で扱う記録の違い
 

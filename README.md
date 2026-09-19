@@ -30,11 +30,11 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 0 | [事前確認と検証の進め方](docs/00-before-start.md) | 対象・予算・IP・試験ユーザーを決める | 手順ドラフト |
 | 1 | [準備と土台](docs/01-prerequisites.md) | RG・予算・Log Analytics ができる | 手順ドラフト |
 | 2 | [Key Vault を準備する](docs/02-key-vault.md) | 監査用 Key Vault ができる | 手順ドラフト |
-| 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | 操作ドラフト・Cosmos／Search は portal 代替・未実行 |
-| 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | 操作ドラフト・接続のGA／通信／作成時認証の確認待ち |
+| 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | サービス到達設定と作成時／直後のキー無効化を反映。Storage の B18 は初回照合・未実行 |
+| 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | G1〜G3 の根拠確認済み。GUI 作成→キー無効化→401→モデル配置。到達は C08 初回で確定、成立しなければ Basic |
 | 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分ける | 操作ドラフト・Consumer は Cloud Shell 代替・第4章完了後に実行 |
 | 6 | [監視と監査を設定する](docs/06-monitoring.md) | 操作・本文の証跡を準備する | 操作ドラフト・本文のEntra取り込み／保護はPreviewのため保留 |
-| 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 案 C のGUI操作・アプリ仕様ドラフト済み。社内PCのCLI配布は暫定採用。本人認証／配布の実機成立／APIへのVNet規則の適用は未確定で作成前停止 |
+| 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 案 C＋アプリ専用 Cosmos への JSON 保存の操作・仕様ドラフト済み。社内PCのCLI配布は暫定採用。本人認証／配布の実機成立／APIへのVNet規則の適用は未確定で作成前停止 |
 | 8 | [権限・認証・ネットワークの統制を試す](docs/08-governance-tests.md) | 許可／拒否・IP・quota を比較する | 操作ドラフト・判定／証跡／復旧を具体化・実行は第7章の完成待ち |
 | 9 | [Policy・脅威検知・評価を試す](docs/09-policy-defender-eval.md) | Audit → Deny、検知・評価を体験する | GUI操作・判定ドラフト済み。Policyの安全な拒否試験／モデル制限／AI実検知／自動評価の到達は保留 |
 | 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | 最後に環境を削除し残存・費用を確認する | GUI操作・残存／費用判定ドラフト済み。削除・完全削除・課金の実機確認は未実施 |
@@ -49,9 +49,9 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 | 表記 | 意味 | 定義場所 |
 |---|---|---|
-| G1〜G3 | 作成前に解決する3つの停止条件。接続の提供範囲・サービス間通信・作成時認証 | [第4章の停止条件](docs/04-foundry-agent.md#作成前の停止条件) |
+| G1〜G3 | 接続の提供範囲・サービス間通信・作成時認証の管理番号。2026-09-19 に根拠と方針を確定。到達は C08 | [第4章の確認根拠](docs/04-foundry-agent.md#作成前に確認した根拠) |
 | C01〜C10 | 初回接続・権限・監査など、結果を判定する検証項目 | [検証項目の一覧](checks/README.md) |
-| D1〜D14 | 構成を選んだ理由を記録した設計判断 | [設計判断の一覧](docs/90-design-decisions.md) |
+| D1〜D16 | 構成を選んだ理由を記録した設計判断 | [設計判断の一覧](docs/90-design-decisions.md) |
 
 各章では番号に短い説明を添えます。番号を覚えてから作業を始める必要はありません。
 
@@ -62,6 +62,7 @@ flowchart LR
   U[社内ブラウザ] --> A[呼び出しアプリ]
   A --> V[送信 VNet 統合・サービス エンドポイント]
   V --> F[Foundry: VNet 規則・本人の認可]
+  V --> C[Cosmos DB: アプリ専用 JSON・VNet 規則・アプリ MI]
   F --> D[Storage / Cosmos DB / AI Search]
   F --> G[ツール用 APIM Basic v2: Entra で許可主体を検証]
   G --> T[許可済みツール]
@@ -70,19 +71,20 @@ flowchart LR
   K[Key Vault: 独立した RBAC・監査検証] --> M
 ```
 
-第4章は、Cosmos DB 接続の GA 範囲、サービス間通信、作成時認証が未確定のため、リソース作成前に停止します。現時点では全章を通し実行できる完成手順ではありません。 作業前に第4章の [開始・再開チェックリスト](docs/04-foundry-agent.md#作業開始再開前のチェックリスト) を確認し、未解決の条件があれば保留します。
+第4章の G1〜G3 は根拠を確認済みです。主線は Standard setup のまま、Cosmos 接続の Preview 例外・3リソースのサービス到達設定・作成直後のキー無効化を適用します。IP 制限下で Agent Service が到達するかは C08 の初回実行で確定し、切り分けても成立しなければ新しい account の Basic setup に切り替えます。Cosmos だけを外した Standard setup は作りません。[開始・再開チェックリスト](docs/04-foundry-agent.md#作業開始再開前のチェックリスト) と、作成直後の401確認を含む各工程の条件を確認します。
 
-上図は検証の目標です。D14 で App Service からの接続方式を採用済みですが、Foundry のプロジェクト API への適用と本人トークンの経路は未検証です。Agent Service からデータ基盤への通信も別の未解決事項で、第4・7章の停止条件を維持します。Key Vault が Agent Service の必須接続先であることを示す図ではありません。
+上図は Standard setup の検証目標です。Basic 分岐後の Agent Service は Microsoft 管理の保存先を使用し、アプリ専用 Cosmos 保存は独立して残ります。Foundry のプロジェクト API への VNet 規則の適用、本人トークン、アプリ実装は未確定で、第7章の開始条件は維持します。Key Vault は独立した監査対象です。全章を通し実行できる検証済みの完成手順ではありません。
 
 ## 守る前提
 
-- **作成・変更は Azure portal の GUI**。Cloud Shell（Bash）は確認と GUI に無い操作の代替用です。第7章のZIP配布だけは、LinuxのGUI非対応とSCMの社内IP制限のため、社内PCのAzure CLIを暫定採用します。理由と範囲は第7章に記載しています。
+- **作成・変更は Azure portal の GUI**。Cloud Shell（原則 Bash）は確認と GUI に無い操作の代替用です。Foundry account のキー無効化と直後の確認だけは PowerShell を使います（A13）。第7章のZIP配布だけは、LinuxのGUI非対応とSCMの社内IP制限のため、社内PCのAzure CLIを暫定採用します。理由と範囲は第7章に記載しています。
 - 専用 RG を実施者ごとに分けます。既存の部門リソースを変更しません。
-- 人の入口は社内 IP、認証は Entra ID。App Service → Foundry は送信 VNet 統合＋サービス エンドポイントを使います。
+- 人の入口は社内 IP、認証は Entra ID。App Service → Foundry／アプリ専用 Cosmos は送信 VNet 統合＋サービス エンドポイントを使います。Agent Service 用には Search の信頼サービス例外・Storage のリソース インスタンス規則・Cosmos の `0.0.0.0` を採用します（D15）。
 - ツール用 APIM はネットワーク上は公開し、Entra の許可主体で制限します。本人の呼び出しは APIM を通らず、モデルのトークン量・費用全体を APIM で制限したとは扱いません。
 - 最初のエージェントはツールなし。ゲートウェイを用意した後、許可先だけ追加します。
 - 既存の Entra 条件付きアクセスは変更しません。
-- App Service の送信 VNet 統合は対象です。Agent 365、Private Endpoint、VNet injection、VPN、Firewall、Bastion、NAT Gateway、WAF、Preview 機能の操作は対象外です。
+- **Preview の唯一の例外は Azure Cosmos DB 接続（第4章・2026-09-19 承認）**です。SLA なし・本番非推奨を明示して NoSQL の体験を優先します。アプリ → Cosmos はこの例外に依存しない GA の経路です。
+- App Service の送信 VNet 統合は対象です。Agent 365、Private Endpoint、VNet injection、VPN、Firewall、Bastion、NAT Gateway、WAF、上記例外以外の Preview 機能の操作は対象外です。
 - Defender CSPM は既定 OFF。共有サブスクリプションへの変更は管理者判断です。
 - API キー・トークン・実 ID・社内 IP・実名はリポジトリに保存しません。`.env`・`*.local.json`・`evidence/` は公開対象外です。
 

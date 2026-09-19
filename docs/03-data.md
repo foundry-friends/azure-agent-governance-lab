@@ -36,7 +36,7 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 | Cosmos DB | for NoSQL / Serverless / 単一リージョン | `<cosmos-account-name>` |
 | AI Search | Basic / レプリカ1 / パーティション1 | `<search-service-name>`（英小文字・数字・ハイフン、2〜60文字） |
 
-> **補足** 公開エンドポイントを有効にすることと、全 IP を許可することは別です。本章は社内 IP のみを許可します。ネットワークの許可があっても、データ操作には別途 Entra ID の権限が必要です。Cloud Shell の送信元は社内 IP ではないため、ここでは管理面の設定確認だけに使います。
+> **補足** 公開エンドポイントを有効にすることと、全 IP を許可することは別です。人の入口は社内 IP に制限し、Agent Service 用にはリソース別の例外を設定します。ネットワークの許可があっても、データ操作には別途 Entra ID の権限が必要です。Cloud Shell の送信元は社内 IP ではないため、ここでは管理面の設定確認だけに使います。
 
 ## 3.3. 構築
 
@@ -79,7 +79,7 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 |---|---|
 | REST API 操作の安全な転送を必須にする | オン |
 | 個々のコンテナーでの匿名アクセスの有効化を許可する | オフ |
-| ストレージ アカウント キーへのアクセスを有効にする | オフ |
+| ストレージ アカウント キーへのアクセスを許可する（項目がある場合） | 無効 |
 | デフォルトで Azure ポータルにおいて Microsoft Entra 認証を使用する | オン |
 | TLS の最小バージョン | 1.2 |
 | Defender for Storage | この章では追加で有効化しない |
@@ -92,9 +92,15 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 18. [セキュリティ + ネットワーク] → [ネットワーク] を選択します。
 19. [リソース設定: 仮想ネットワーク、IP アドレス、例外] の [表示] を選択します。
 20. IP 一覧が社内の一覧だけであることを確認します。
-21. [例外] のチェックをすべて外します。
-22. リソースインスタンスの許可が追加されていないことを確認します。
-23. [保存] を選択します。
+21. [リソース インスタンス] の現在の規則を確認します。
+22. [保存] を選択します。
+23. [設定] > [構成] を開きます。
+24. [ストレージ アカウント キーへのアクセスを許可する] を [無効] にします。
+25. [保存] を選択します。
+
+> **Note** 要確認: B18 — 作成ウィザード側のキーアクセス項目の有無は初回で照合します。項目があれば作成時に無効化し、無ければ作成直後・データ投入前に上記の [構成] で無効化します。
+
+第4章で Foundry account を作成した後、[セキュリティとネットワーク] > [ネットワーク] > リソース設定の [表示] > [リソース インスタンス] に、種類 `Microsoft.CognitiveServices/accounts` と今回の Foundry account を追加します。この章ではまだ存在しない account の規則を追加しません。ネットワーク規則だけではデータ権限を付与しないため、第4章で MI のロールも確認します。
 
 > **補足** データ保護は組織の既定を維持します。論理削除やバージョン管理で保存量が増える場合があるため、設定値を記録します。Cloud Shell が使用する既存 Storage の共有キー設定は変更しません。
 
@@ -107,9 +113,9 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 3. [基本] に自分専用 RG・アカウント名・Japan East を入力します。
 4. 容量の選択で [サーバーレス] を選択します。
 5. [セキュリティ] の [キーベースの認証] を [無効] にします。
-6. 作成前のネットワーク設定で、社内 IP だけの許可リストを指定できるか確認します。
+6. 作成前のネットワーク設定で、社内 IP と Azure データセンター内の許可を指定できるか確認します。
 
-> **Note** 要確認: Learn では作成後の [ネットワーク] と IP 規則は確認できましたが、作成ウィザードで社内 IP を指定する画面の詳細までは裏付けを取れていません。未設定のまま [作成] を押しません。現時点のドラフトではウィザードをキャンセルし、直下の portal 代替で作成します。実機で作成時の制限を確認できたら、この分岐を通常の GUI 手順へ置き換えます。
+> **Note** 要確認: Learn では作成後の [ネットワーク] と IP 規則は確認できましたが、作成ウィザードで社内 IP と Azure データセンター内許可を指定する画面の詳細までは裏付けを取れていません。未設定のまま [作成] を押しません。現時点のドラフトではウィザードをキャンセルし、直下の portal 代替で作成します。実機で作成時の制限を確認できたら、この分岐を通常の GUI 手順へ置き換えます。
 
 #### 作成時から IP と認証を制限する portal 代替
 
@@ -172,6 +178,7 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
   ]
 }
 ```
+実行結果の確認ポイント: 対象名・Serverless・キー無効・社内 IP と `0.0.0.0` の指定を確認します。
 
 5. [保存] を選択します。
 6. 表の値を入力します。
@@ -182,14 +189,15 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 | リソース グループ | 第1章の自分専用 RG |
 | Resource Name | 作成前に決めた未使用の名前 |
 | Location | `japaneast` |
-| Allowed Ip Rules | 下の形式で社内の公開 IPv4 を入力した配列 |
+| Allowed Ip Rules | 社内の公開 IPv4 と Azure データセンター内許可 `0.0.0.0` の配列 |
 
 ```json
-[{"ipAddressOrRange":"<corporate-public-ipv4-cidr>"}]
+[{"ipAddressOrRange":"<corporate-public-ipv4-cidr>"},{"ipAddressOrRange":"0.0.0.0"}]
 ```
+実行結果の確認ポイント: 対象名・Serverless・キー無効・社内 IP と `0.0.0.0` の指定を確認します。
 
 7. IP が複数ある場合は配列内に同じ形式のオブジェクトを追加します。
-8. IP 一覧が承認済みの一覧と一致することを確認します。
+8. IP 一覧が社内の許可リストと `0.0.0.0` に一致することを確認します。
 9. [確認と作成] を選択します。
 10. 対象 RG・リソース名・料金対象を確認します。
 11. 検証が成功したら [作成] を選択します。
@@ -201,107 +209,78 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 
 1. 作成した Cosmos DB を開きます。
 2. [ネットワーク] を選択します。
-3. [アクセスを許可する] が [選択したネットワーク] であることを確認します。
-4. 許可 IP が社内の一覧だけであることを確認します。
-5. Azure データセンター内からの接続許可がオフであることを確認します。
-6. Azure portal ミドルウェア IP が追加されていないことを確認します。
+3. [アクセスを許可する] を [選択したネットワーク] にします。
+4. 社内の公開 IPv4／CIDR を許可 IP に設定します。
+5. [Accept connections from within Azure datacenters] をオンにします。
+6. [保存] を選択します。
 7. [タグ] に第1章と同じ管理用タグを設定します。
-8. 3.4の管理面の確認で Serverless とキー無効を照合します。
-
-> **補足** Azure データセンターからの許可は、特定の Foundry だけを許可する設定ではありません。Azure portal ミドルウェア IP の追加も社内 IP 以外への例外になるため、この章では追加しません。データ エクスプローラーが開けなくても、確認のためにこれらをオンにしません。Serverless は単一リージョンで使い、プロビジョニングする RU/s は入力しません。
-
-### 3.3.3. AI Search を作る
-
-[通常の作成手順](https://learn.microsoft.com/ja-jp/azure/search/search-create-service-portal)では作成後に認証を変更します。本検証では作成時から `disableLocalAuth=true` と社内 IP 一覧を指定するため、Cosmos DB と同じ portal のテンプレート編集を使います。Search サービス1個だけを作ります。
-
-> **Note** 要確認: 通常の Search 作成ウィザードで、作成時に IP 制限とキー無効を同時に設定する画面の詳細は未確認です。以下は GA の ARM プロパティに基づく代替ドラフトであり、portal でのデプロイ成功は未検証です。
-
-1. Azure portal の [リソースの作成] で [テンプレートのデプロイ] を検索します。
-2. [作成] を選択します。
-3. [エディターで独自のテンプレートを作成する] を選択します。
-4. エディターの内容を次の JSON に置き換えます。
-
-```json
-{
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "resourceName": {
-      "type": "string"
-    },
-    "location": {
-      "type": "string",
-      "defaultValue": "japaneast"
-    },
-    "allowedIpRules": {
-      "type": "array",
-      "minLength": 1
-    }
-  },
-  "resources": [
-    {
-      "type": "Microsoft.Search/searchServices",
-      "apiVersion": "2025-05-01",
-      "name": "[parameters('resourceName')]",
-      "location": "[parameters('location')]",
-      "identity": {
-        "type": "SystemAssigned"
-      },
-      "sku": {
-        "name": "basic"
-      },
-      "properties": {
-        "replicaCount": 1,
-        "partitionCount": 1,
-        "disableLocalAuth": true,
-        "publicNetworkAccess": "Enabled",
-        "networkRuleSet": {
-          "bypass": "None",
-          "ipRules": "[parameters('allowedIpRules')]"
-        }
-      }
-    }
-  ]
-}
-```
-
-5. [保存] を選択します。
-6. 表の値を入力します。
+8. 3.4 の管理面の確認で Serverless・キー無効・`0.0.0.0` を照合します。
 
 | 項目 | 値 |
 |---|---|
-| サブスクリプション | 第1章で選んだ検証用サブスクリプション |
-| リソース グループ | 第1章の自分専用 RG |
-| Resource Name | 作成前に決めた未使用の名前 |
-| Location | `japaneast` |
-| Allowed Ip Rules | 下の形式で社内の公開 IPv4 を入力した配列 |
+| 公開ネットワーク | 選択したネットワーク。Disabled にしない |
+| IP 規則 | 社内公開 CIDR と `0.0.0.0` |
+| Azure データセンター内からの接続を受け入れる | オン（A11） |
+| キーベースの認証 | 無効を維持 |
 
-```json
-[{"value":"<corporate-public-ipv4-cidr>"}]
+> **Note** 要確認: 英語項目 [Accept connections from within Azure datacenters] の日本語表示は初回に照合します。
+
+> **補足** `0.0.0.0` は Azure データセンター内からの接続を許可する特別な値です。Azure 内の他社のサブスクリプションからも到達できますが、認証トークンは常に必須です。インターネット全公開ではないものとして採用します（A11）。この設定で Azure portal からも自動的に届くため、Data Explorer 用のミドルウェア IP を別途追加する必要はありません。ネットワーク許可とデータ面の閲覧権限は別です。
+
+> **Note** プライベート IP を IP 許可リストに書くと作成／更新が失敗します。反映には最大15分かかります。Serverless は単一リージョンで使い、Provisioned の RU/s は入力しません。
+
+第7章で App Service の統合サブネットを仮想ネットワーク規則として追加します。この章では追加しません（A14）。
+
+### 3.3.3. AI Search を作る
+
+作成ウィザードにはキー無効化の項目がないため、[通常の作成手順](https://learn.microsoft.com/ja-jp/azure/search/search-create-service-portal)で作成し、直後・データ投入前にネットワークと認証を設定します。
+
+1. Azure portal で [Azure AI Search] を開きます。
+2. [作成] を選択します。
+3. [基本] に表の値を入力します。
+
+| 項目 | 値 |
+|---|---|
+| リソース グループ | 今回の実施者専用 RG |
+| サービス名 | `<search-service-name>` |
+| リージョン | Japan East |
+| 価格レベル | Basic |
+
+4. [確認と作成] で対象と Basic を照合します。
+5. [作成] を選択します。
+6. 作成した Search の [設定] > [ネットワーク] を開きます。
+7. [パブリック ネットワーク アクセス] を [選択した IP アドレス] にします。
+8. 社内公開 CIDR を IP 規則へ追加します。
+9. [Exceptions] の [Allow Azure services on the trusted services list to access this search service] をオンにします。
+10. [保存] を選択します。
+11. [設定] > [キー] を開きます。
+12. [ロールベースのアクセス制御] を選択します。
+13. [設定] > [スケール] でレプリカ1・パーティション1を確認します。
+14. [タグ] に第1章と同じ管理用タグを設定します。
+
+| 項目 | 値 |
+|---|---|
+| パブリック ネットワーク アクセス | 選択した IP アドレス＋社内 CIDR |
+| 信頼されたサービス一覧の Azure サービスからのアクセスを許可する | オン |
+| API アクセス制御 | ロールベースのアクセス制御のみ。[両方] は使わない |
+| レプリカ / パーティション | 1 / 1 |
+
+> **Note** 要確認: [Exceptions] と [Allow Azure services on the trusted services list to access this search service] の日本語表示は初回に照合します。
+
+> **補足** 信頼サービス一覧には `Microsoft.CognitiveServices`（Azure OpenAI と Foundry Tools）が含まれます。Foundry のマネージド ID と Search 上のロールが必要で、第4章で割り当てます。ネットワークの反映は最大15分、RBAC の反映は5〜10分が目安です。RBAC のみへの切替は即時で、自分がデータを操作する場合もデータ面ロールが必要です。この章ではデータを投入しません。
+
+GUI で認証を変更できない場合だけ、Cloud Shell（Bash）で代替します。
+
+```bash
+az search service update --resource-group '<rg>' --name '<search-service-name>' --disable-local-auth true
 ```
-
-7. IP が複数ある場合は配列内に同じ形式のオブジェクトを追加します。
-8. IP 一覧が承認済みの一覧と一致することを確認します。
-9. [確認と作成] を選択します。
-10. 対象 RG・リソース名・料金対象を確認します。
-11. 検証が成功したら [作成] を選択します。
-12. デプロイ完了を待ちます。
-
-> **補足** 空配列・全許可の範囲・社内 LAN のプライベート IP は入力しません。テンプレートの配列長制約だけでは IP の妥当性や社内承認まで検証できません。既存リソース名を指定すると更新になるため、新規の専用名だけを使います。
+実行結果の確認ポイント: 対象 Search の `disableLocalAuth` が `true` で、ネットワーク規則を維持していることを確認します。
 
 #### 作成後の設定を確認する
 
-1. 作成した Search を開きます。
-2. [設定] → [キー] を選択します。
-3. [ロールベースのアクセス制御] であることを確認します。
-4. [設定] → [ネットワーク] を選択します。
-5. [パブリック ネットワーク アクセス] が [選択した IP アドレス] であることを確認します。
-6. 許可 IP が社内の一覧だけであることを確認します。
-7. 信頼された Azure サービスの例外がオフであることを確認します。
-8. [設定] → [スケール] でレプリカ1・パーティション1を確認します。
-9. [タグ] に第1章と同じ管理用タグを設定します。
-
-> **補足** [両方] は API キーも許可する設定なので使いません。Basic は IP 制限に対応します。この章ではインデックスやサンプルデータを作りません。データ操作権限をまだ割り当てていないため、検索できることを完了条件にしません。
+1. [設定] > [キー] で [ロールベースのアクセス制御] を確認します。
+2. [設定] > [ネットワーク] で社内 CIDR と信頼サービス例外がオンであることを確認します。
+3. 3.4 の管理面の確認で Basic・レプリカ1・パーティション1・キー無効を照合します。
 
 ### 3.3.4. 次章へ渡す ID を記録する
 
@@ -314,9 +293,9 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 | `AZURE_COSMOS_DB_ACCOUNT_RESOURCE_ID` | 今回作成した Cosmos DB の ARM ID |
 | `AI_SEARCH_RESOURCE_ID` | 今回作成した Search の ARM ID |
 
-キー・接続文字列は取得しません。作成画面や JSON の実値を GitHub に貼り付けません。
+キー・接続文字列は取得しません（例外は第4章の Foundry account の 401 確認だけ）。作成画面や JSON の実値を GitHub に貼り付けません。
 
-> **補足** D14 の App Service 統合サブネットは、第7章の App Service → Foundry 用です。Agent Service がこのサブネットから発信するわけではないため、本章のデータ基盤への到達条件は解決しません。第4章の G2 を引き続き確認します。
+> **補足** D14 の App Service 統合サブネットは、第7章の App Service → Foundry 用です。Agent Service がこのサブネットから発信するわけではないため、本章のデータ基盤への到達条件は解決しません。Agent Service の経路は上記のリソース別設定と第4章 C08 で確認します。A14 のアプリ → Cosmos は別の VNet 規則で許可します。
 
 ## 3.4. 完了条件
 
@@ -327,26 +306,27 @@ Azure Cloud Shell の [Bash] で確認します。各コマンドの ID を、3.
 ```bash
 az resource show --ids "<storage-resource-id>" --api-version 2023-05-01 --query '{id:id,location:location,kind:kind,sku:sku.name,hot:properties.accessTier,sharedKey:properties.allowSharedKeyAccess,anonymousBlob:properties.allowBlobPublicAccess,https:properties.supportsHttpsTrafficOnly,tls:properties.minimumTlsVersion,publicAccess:properties.publicNetworkAccess,network:properties.networkAcls}' --output json
 ```
-実行結果の確認ポイント: `StorageV2`・`Standard_LRS`・`Hot`・sharedKey=false・anonymousBlob=false・https=true・TLS1_2・publicAccess=Enabled・network.defaultAction=Deny・network.bypass=None・社内 IP のみを照合します。
+実行結果の確認ポイント: `StorageV2`・`Standard_LRS`・`Hot`・sharedKey=false・anonymousBlob=false・https=true・TLS1_2・publicAccess=Enabled・network.defaultAction=Deny・社内 IP 規則を照合し、Foundry のリソース インスタンス規則は第4章で追加することを照合します。
 
 ### Cosmos DB
 
 ```bash
 az resource show --ids "<cosmos-resource-id>" --api-version 2024-11-15 --query '{id:id,location:location,kind:kind,capabilities:properties.capabilities,locations:properties.locations,consistency:properties.consistencyPolicy.defaultConsistencyLevel,disableLocalAuth:properties.disableLocalAuth,publicAccess:properties.publicNetworkAccess,ipRules:properties.ipRules,bypass:properties.networkAclBypass}' --output json
 ```
-実行結果の確認ポイント: `GlobalDocumentDB`・EnableServerless・Japan East の1リージョン・Session・disableLocalAuth=true・publicAccess=Enabled・社内 IP のみ・bypass=None を照合します。
+実行結果の確認ポイント: `GlobalDocumentDB`・EnableServerless・Japan East の1リージョン・Session・disableLocalAuth=true・publicAccess=Enabled・社内 IP と `0.0.0.0` の IP 規則を照合します。
 
 ### AI Search
 
 ```bash
-az resource show --ids "<search-resource-id>" --api-version 2025-05-01 --query '{id:id,location:location,sku:sku.name,replicas:properties.replicaCount,partitions:properties.partitionCount,disableLocalAuth:properties.disableLocalAuth,publicAccess:properties.publicNetworkAccess,network:properties.networkRuleSet,identity:identity.type}' --output json
+az resource show --ids "<search-resource-id>" --api-version 2025-05-01 --query '{id:id,location:location,sku:sku.name,replicas:properties.replicaCount,partitions:properties.partitionCount,disableLocalAuth:properties.disableLocalAuth,publicAccess:properties.publicNetworkAccess,network:properties.networkRuleSet}' --output json
 ```
-実行結果の確認ポイント: basic・レプリカ1・パーティション1・disableLocalAuth=true・publicAccess=Enabled・社内 IP のみ・network.bypass=None・SystemAssigned を照合します。
+実行結果の確認ポイント: basic・レプリカ1・パーティション1・disableLocalAuth=true・publicAccess=Enabled・社内 IP 規則・信頼サービス例外がオンであることを照合します。
 
 - [ ] 3リソースが自分専用 RG に存在します。
 - [ ] 3リソースの SKU / 容量方式と認証設定が一致します。
-- [ ] IP 一覧に空欄や全許可がなく、社内 IP だけになっています。
-- [ ] Storage のサービス例外とリソースインスタンス例外が空で、Search / Cosmos DB の bypass が None です。
+- [ ] 社内 IP 規則を維持し、Cosmos DB には承認済みの `0.0.0.0` があります。
+- [ ] Search の信頼サービス例外がオンです。
+- [ ] Storage の Foundry リソース インスタンス規則は第4章で追加すると記録しました。
 - [ ] 3つの ARM ID を非公開 `.env` に記録しました。
 - [ ] 確認結果と作成日時を非公開 `evidence/` に記録しました。
 
@@ -359,8 +339,8 @@ az resource show --ids "<search-resource-id>" --api-version 2025-05-01 --query '
 | 作成できない | 対象 RG・作成権限・Policy の拒否理由 | 管理者へ対象 RG の条件を確認します |
 | Japan East / Basic / Serverless が選べない | リージョン提供状況・クォータ | その場で SKU を変更せず、検証の費用と Foundry 接続条件を再確認します |
 | IP の入力が拒否される | 公開 IPv4 / CIDR の形式 | Storage で単一 IP は CIDR の `/32` ではなく単一アドレスで指定します。`/31` は2つの単一 IP に分けます |
-| 作成ウィザードに必要な項目がない | Learn と実機の UI の違い | Cosmos DB / Search は章内の portal 代替を使います。代替も検証エラーなら止めます |
-| データ参照が403になる | 送信元 IP・データ操作権限・反映待ち | この章では3.4の管理面の確認を先に行います |
+| 作成ウィザードに必要な項目がない | Learn と実機の UI の違い | Cosmos DB の IP は章内の portal 代替、Storage のキーは作成直後の [構成]、Search は作成直後の [キー] を使います。Foundry のキーは第4章の Cloud Shell で無効化します |
+| データ参照が403になる | 送信元 IP・データ操作権限・反映待ち | Cosmos の `0.0.0.0`・Search の信頼サービス例外・データ面ロールを確認します。Storage の Foundry 規則は第4章で追加します |
 | 設定変更後も表示が変わらない | 保存成功・対象リソース | Cosmos DB / Search のネットワーク設定は15分待ってから再確認します |
 
 1. 解消しない場合は章番号・操作番号・期待値・エラーを非公開 `evidence/` に記録します。
@@ -372,7 +352,7 @@ az resource show --ids "<search-resource-id>" --api-version 2025-05-01 --query '
 
 データ基盤を残して、第4章で Foundry を作成します。3つの ARM ID を接続に使用します。Foundry の ID が作成された後に必要な権限とサービス間接続を設定するため、第5章を先に実行して戻る必要はありません。
 
-> **Note** 要確認: 社内 IP 制限下で Foundry Agent Service が3リソースへ接続する経路は未検証です。同じ Azure リージョン内のサービスから Storage への接続は、公開 IP 規則だけでは制御できません。Storage / Search の信頼されたサービス例外は各サービスの対応範囲と ID・権限を確認する必要があります。Cosmos DB の Azure 全体許可を代用して解決済みにはしません。第4章で解決できなければ、現行の制約のままエージェントまで動くとは宣言できません。
+> **Note** サービス到達を許す設定は Learn で確定しました。IP 制限下で3リソースへ実際に到達するかは第4章 C08 の初回実行で確認します。成立しない場合は Standard setup から Basic setup へ分岐し、Cosmos だけを外した Standard setup は作りません。
 
 ## 3.7. 費用
 
@@ -395,7 +375,7 @@ AI Search はサービスを保持している時間の課金に注意します�
 
 ### IaC で再現する (任意)
 
-[04_data.bicep](../infra/modules/04_data.bicep) は参考です。現在のモジュールはサービス例外を有効にする設定を含み、この章の例外なしの初期状態とは一致しません。GUI 作成済みの環境に重ねてデプロイしません。モジュールと接続条件の整合が取れるまで、既存のデプロイスクリプトの停止点を維持します。
+[04_data.bicep](../infra/modules/04_data.bicep) は参考です。現在のモジュールは今回のリソース別設定と D14・D15・D16 の再現を保証するものではありません。GUI 作成済みの環境に重ねてデプロイしません。モジュールと接続条件の整合が取れるまで、既存のデプロイスクリプトの停止点を維持します。
 
 ### 出典
 
@@ -419,6 +399,16 @@ AI Search はサービスを保持している時間の課金に注意します�
 - 出典: [Search ARM 2025-05-01](https://learn.microsoft.com/ja-jp/azure/templates/microsoft.search/2025-05-01/searchservices)（取得日 2026-09-15）
 - 出典: [portal からテンプレートをデプロイ](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/templates/deploy-portal)（取得日 2026-09-15）
 - 出典: [az resource show](https://learn.microsoft.com/ja-jp/cli/azure/resource)（取得日 2026-09-15）
+
+- 出典: [Search の信頼サービス例外](https://learn.microsoft.com/en-us/azure/search/service-configure-firewall)（取得日 2026-09-19）
+- 出典: [Storage の信頼サービス](https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security-trusted-azure-services)（取得日 2026-09-19）
+- 出典: [Storage のリソース インスタンス規則](https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security-resource-instances)（取得日 2026-09-19）
+- 出典: [Cosmos DB の IP 制御](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-firewall)（取得日 2026-09-19）
+- 出典: [Cosmos DB のキー無効化](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（取得日 2026-09-19）
+- 出典: [Storage のキー無効化](https://learn.microsoft.com/en-us/azure/storage/common/shared-key-authorization-prevent)（取得日 2026-09-19）
+- 出典: [Search の RBAC のみへの切替](https://learn.microsoft.com/en-us/azure/search/search-security-enable-roles)（取得日 2026-09-19）
+
+- 出典: [az search service update](https://learn.microsoft.com/en-us/cli/azure/search/service?view=azure-cli-latest)（取得日 2026-09-19）
 
 ---
 

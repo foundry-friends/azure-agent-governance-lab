@@ -2,13 +2,13 @@
 
 進め方: README の第0〜10章を順番に実施します。第6章 6.6 の進行条件を満たしてから進めます。本文監査など明示した Pending は記録を引き継ぎます。
 
-> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。取得日 2026-09-16。サービス間通信は 7.2 の案 C（2026-09-16 決定）で進めます。案 C のGUI操作ドラフトとアプリ仕様を作成済みです。社内PCからのCLI配布は暫定採用済みです。本人の委任認証・配布の実機成立・APIへのVNet規則の適用が未確定で、現時点では作成前に停止します。
+> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。更新日 2026-09-19。サービス間通信は 7.2 の案 C（2026-09-16 決定）で進めます。案 C のGUI操作ドラフトとアプリ仕様を作成済みです。社内PCからのCLI配布は暫定採用済みです。本人の委任認証・配布の実機成立・APIへのVNet規則の適用が未確定で、現時点では作成前に停止します。
 
 > **補足** この章では環境を削除しません。通常の削除は最後の第10章です。中断して片付ける場合だけ、第10章へ進みます。
 
 ## 7.1. 目的
 
-同じエージェントを利用者本人の権限で呼び出すブラウザ用アプリと、ツール経路用の APIM を用意します。本人の経路は App Service から Foundry を直接呼び、APIM は Agent Service からのツール呼び出しを通す入口にします。利用者本人の権限で試せる入口ができてから、次の章で統制試験をします。
+同じエージェントを利用者本人の権限で呼び出すブラウザ用アプリと、ツール経路用の APIM を用意します。本人の経路は App Service から Foundry を直接呼び、APIM は Agent Service からのツール呼び出しを通す入口にします。追加シナリオとして、アプリ専用の Cosmos DB コンテナーに会話メモを JSON で保存します（A14・D16）。利用者本人の権限で試せる入口ができてから、次の章で統制試験をします。
 
 ### なぜこの作業が必要か
 
@@ -18,7 +18,7 @@
 
 ## 7.2. 前提と作成前の停止条件
 
-第4章の接続条件を解決し、同じエージェントの応答、第5章の権限設定、第6章の通常診断の設定を確認済みであることを前提とします。第6章で保留した本文監査は保留のまま引き継ぎます。
+第4章の G1〜G3 の根拠と、選択した Standard／Basic の C01・C08 初回結果を記録し、同じエージェントの応答、第5章の権限設定、第6章の通常診断の設定を確認済みであることを前提とします。第6章で保留した本文監査は保留のまま引き継ぎます。
 
 ### 採用前の課題：通信の送信元を分ける
 
@@ -56,9 +56,10 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 | 要素 | 内容 |
 |---|---|
 | 仮想ネットワーク | このラボ専用に 1 つ新設。閉域機能（Private Endpoint・VNet インジェクション・VPN・Firewall・Bastion）は使わない |
-| 統合サブネット | App Service 専用。portal 作成時は /27 以上。委任 `Microsoft.Web/serverFarms`。サービス エンドポイント `Microsoft.CognitiveServices` を有効化 |
+| 統合サブネット | App Service 専用。portal 作成時は /27 以上。委任 `Microsoft.Web/serverFarms`。サービス エンドポイント `Microsoft.CognitiveServices` と `Microsoft.AzureCosmosDB` を有効化 |
 | App Service | Linux B1 のまま。[ネットワーク] の [送信トラフィックの構成] で上記サブネットに VNet 統合。[送信インターネット トラフィック] は既定のまま（サービス エンドポイント宛は既定で VNet 経由） |
 | Foundry | [ネットワーク] の既定拒否＋社内 IP 規則に加え、[既存の仮想ネットワークを追加] で統合サブネットを VNet 規則に登録 |
+| アプリの保存先 | Cosmos DB のアプリ専用 `<app-db>/<app-container>`。統合サブネットを Cosmos の VNet 規則で許可し、App Service MI のデータロールで認証 |
 | 本人の経路 | 社内ブラウザ → App Service（社内 IP のアクセス制限）→ Foundry（VNet 規則）。APIM を通さない |
 | ツールの経路 | Agent Service → APIM Basic v2 → 許可した呼び出し先。APIM は `validate-azure-ad-token` で発行元 ID を検証し、IP 規則は社内ブラウザからの直接試験用に限る |
 | 追加費用 | 仮想ネットワーク・サブネット・VNet 統合・サービス エンドポイントは追加料金なし。NAT ゲートウェイは使わない |
@@ -71,9 +72,9 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 
 ### 開始・再開チェックリスト
 
-第4章の G1〜G3（接続・通信・認証の停止条件）とは別に、この章の開始条件を確認します。
+第4章の G1〜G3（根拠確認済み）と C08 の初回到達確認とは別に、この章の開始条件を確認します。
 
-- [ ] 第4章の停止条件を解決し、エージェントの初回応答を確認している。
+- [ ] 第4章のエージェントの初回応答と C08 の到達を確認している（Basic 分岐時は対象外と失敗の記録も引き継ぐ）。
 - [ ] 案 C の仮想ネットワーク・統合サブネット・サービス エンドポイント・Foundry の VNet 規則が、承認された IP 許可方針と両立する根拠を記録している。
 - [ ] Foundry が利用者本人を認可するトークン経路を確定している。
 - [ ] 呼び出しアプリのソース、固定した配布版、ランタイム、設定項目、GUI デプロイ手順がリポジトリに揃っている。
@@ -84,7 +85,7 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 
 ## 7.3. 操作（開始条件の解決後）
 
-以下は案 C の操作ドラフトです。7.2 のチェックが揃ってから実施します。認証・配布の未確定部分を飛ばして作成を開始しません。工程6の配布限定例外を除き、確認コマンドは Cloud Shell の Bash で実行し、山括弧の値を今回のリソースに置き換えます。実値と出力は非公開の証跡だけに保存します。
+以下は案 C の操作ドラフトです。7.2 のチェックが揃ってから実施します。認証・配布の未確定部分を飛ばして作成を開始しません。工程7の配布限定例外を除き、確認コマンドは Cloud Shell の Bash で実行し、山括弧の値を今回のリソースに置き換えます。実値と出力は非公開の証跡だけに保存します。
 
 ### 1. 仮想ネットワークと統合サブネットを作る
 
@@ -105,7 +106,7 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 | サブネット名 | `<App Service専用の統合サブネット名>` |
 | サブネットの大きさ | `/27` 以上。アドレス空間に収まる未使用範囲 |
 | サブネットの委任 | `Microsoft.Web/serverFarms` |
-| サービス エンドポイント | `Microsoft.CognitiveServices` |
+| サービス エンドポイント | `Microsoft.CognitiveServices` と `Microsoft.AzureCosmosDB` |
 | タグ | 第1章と同じ管理用タグ |
 
 7. [IP アドレス] で承認されたアドレス空間を設定します。
@@ -117,7 +118,7 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 13. 作成した VNet の [設定] → [サブネット] を開きます。
 14. 統合用サブネットを選択します。
 15. [サブネットをサービスに委任] で `Microsoft.Web/serverFarms` を選択します。
-16. [サービス エンドポイント] で `Microsoft.CognitiveServices` を選択します。
+16. [サービス エンドポイント] で `Microsoft.CognitiveServices` と `Microsoft.AzureCosmosDB` を選択します。
 17. [保存] を選択します。
 
 > **画面の見え方** 作成ウィザードに委任やサービス エンドポイントの選択がない場合は、作成後のサブネット編集で設定します。統合用サブネットに VM や他サービスを配置しません。App Service の統合は送信専用で、社内PCをこの VNet に接続する操作ではありません。
@@ -125,7 +126,7 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 ```bash
 az network vnet subnet show --resource-group '<専用RG名>' --vnet-name '<今回のVNet名>' --name '<統合サブネット名>' --query '{id:id,prefix:addressPrefix,delegations:delegations[].serviceName,endpoints:serviceEndpoints[].service}' --output json
 ```
-実行結果の確認ポイント: 専用サブネットの範囲、`Microsoft.Web/serverFarms`、`Microsoft.CognitiveServices` が一致することを確認します。
+実行結果の確認ポイント: 専用サブネットの範囲、`Microsoft.Web/serverFarms`、`Microsoft.CognitiveServices` と `Microsoft.AzureCosmosDB` が一致することを確認します。
 
 ### 2. App Service を作り、入口を制限する
 
@@ -234,7 +235,80 @@ az cognitiveservices account network-rule list --resource-group '<専用RG名>' 
 
 > **Note** 要確認: Foundry Tools のアカウントに対する公式操作は確認できましたが、採用するプロジェクト／エージェント API への VNet 規則の適用は未検証です。設定の存在を到達成功とせず、アプリ配布後に同じエージェントへの応答で確認します。失敗時は IP 制限を解除せず停止します。これは Agent Service → BYO データ基盤の G2 とは別の確認です。
 
-### 5. サインインと本人トークンの設定を詰める
+### 5. Cosmos DB に統合サブネットの仮想ネットワーク規則を追加する
+
+Agent Service の保存経路とは独立した、呼び出しアプリ → Cosmos DB の経路です。VNet 規則・サービス エンドポイント・Entra 認証の GA 機能を使うため、第4章の Cosmos 接続の Preview 例外には依存しません。Basic へ分岐した場合も、第3章の Cosmos DB をアプリ用に使用します。
+
+1. 第3章の Cosmos DB の [Networking] を開きます。
+2. [Selected networks] を選択します。
+3. [Virtual networks] の [Add existing Azure virtual network] を選択します。
+4. 今回の VNet と App Service の統合サブネットを選択します。
+5. `Microsoft.AzureCosmosDB` サービス エンドポイントの有効化を確認します。
+6. [Add] を選択します。
+7. [Save] を選択します。
+8. 社内 IP・`0.0.0.0`・キー無効の設定が維持されていることを確認します。
+
+> **Note** 要確認: [Networking]（ネットワーク）・[Virtual networks]（仮想ネットワーク）・[Add existing Azure virtual network]（既存の仮想ネットワークを追加）等の日本語表示は初回に照合します。
+
+> **補足** サービス エンドポイント経由の要求には public IP がないため、IP 規則だけでは許可できません。統合サブネットを VNet 規則に追加します。プライベート CIDR を IP 規則へ入力しません。反映には最大15分を見込みます。
+
+| 項目 | 値 |
+|---|---|
+| Cosmos DB | 第3章の Serverless account |
+| 仮想ネットワーク規則 | App Service と同じ統合サブネット |
+| サービス エンドポイント | `Microsoft.AzureCosmosDB` |
+| IP 規則 | 社内 CIDR と `0.0.0.0` を維持 |
+| キー認証 | 無効を維持 |
+
+```bash
+az resource show --ids '<cosmos-resource-id>' --api-version 2024-11-15 --query '{virtualNetworkRules:properties.virtualNetworkRules,vnetFilter:properties.isVirtualNetworkFilterEnabled,ipRules:properties.ipRules,disableLocalAuth:properties.disableLocalAuth}' --output json
+```
+実行結果の確認ポイント: 統合サブネットの規則・VNet フィルター有効・既存 IP 規則・キー無効が一致することを確認します。
+
+#### アプリ専用の保存先と MI の権限を準備する
+
+検証担当者が、キー無効のままデータベース／コンテナーを作成する権限を持つことを前提とします。作成の権限と、作成後のデータ閲覧ロールは別に確認します。
+
+1. App Service の [Settings] > [Identity] を開きます。
+2. [System assigned] の [Status] を [On] にします。
+3. [Save] を選択します。
+4. アプリの MI の principal ID を非公開で確認します。
+5. Cosmos DB の [Data Explorer] を開きます。
+6. [New Container] を選択します。
+7. 下表の値を入力します。
+8. [OK] を選択します。
+
+| 項目 | 値 |
+|---|---|
+| Database id | [Create new] で `<app-db>`。`enterprise_memory` とは別 |
+| Container id | `<app-container>` |
+| Partition key | `/userId` |
+| 容量 | 既存 Serverless を維持。Provisioned の RU/s を設定しない |
+
+> **Note** 要確認: [Settings]・[Identity]・[System assigned]・[Status]・[New Container] 等の日本語表示は初回に照合します。Data Explorer の作成・閲覧は検証担当者の権限で行い、アプリ MI の割当とは分けます。管理ロールだけでデータ閲覧が可能とは扱いません。
+
+Cosmos のデータ面ロール管理は portal 非対応のため、Cloud Shell（Bash）でアプリ専用コンテナーに限定して割り当てます。App Service MI へ account 全体や Agent Service の `enterprise_memory` の権限を与えません。
+
+```bash
+az cosmosdb sql role definition list --resource-group '<rg>' --account-name '<cosmos-account>' --query "[?roleName=='Cosmos DB Built-in Data Contributor'].{id:id,roleName:roleName}" --output json
+```
+実行結果の確認ポイント: 組み込みのデータ面ロールの ID を確認します。
+
+```bash
+az cosmosdb sql role assignment create --resource-group '<rg>' --account-name '<cosmos-account>' --role-definition-id '<built-in-data-contributor-role-id>' --principal-id '<app-service-mi-principal-id>' --scope '/dbs/<app-db>/colls/<app-container>'
+```
+実行結果の確認ポイント: App Service の MI とアプリ専用コンテナーのスコープが一致することを確認します。
+
+```bash
+az cosmosdb sql role assignment list --resource-group '<rg>' --account-name '<cosmos-account>' --output json
+```
+実行結果の確認ポイント: 同じ MI の既存割当も確認し、`enterprise_memory` や account 全体へのデータ権限がないことを照合します。
+
+Data Explorer で確認する担当者にもアプリ専用コンテナーのデータ閲覧権限が必要です。上と同じ方法で Cosmos DB Built-in Data Reader を照会し、担当者へ同スコープで割り当てます。作成操作が権限不足で失敗する場合は管理面／データ面の操作を切り分け、キーを再有効化しません。
+
+アプリ実装・配布後、社内ブラウザから合成会話の [会話メモを保存] を実行します。[Data Explorer] のアプリ専用コンテナーで JSON を確認し、Agent Service のコンテナーへ書いていないことを確認します。アプリ仕様は [同梱仕様](../assets/app/README.md) に記載し、この章ではコードを実装しません。
+
+### 6. サインインと本人トークンの設定を詰める
 
 次の設定は入口の認証です。下流トークンの方式が確定してから、アプリ仕様と合わせて保存します。
 
@@ -265,16 +339,16 @@ az cognitiveservices account network-rule list --resource-group '<専用RG名>' 
 
 > **Note** 要確認: 委任権限・同意・実トークンの audience と scope／claim・期限切れ時の扱いを確定するまで、認証設定を完成例として扱いません。`.default` の文字列だけでは本人の委任権限の取得は証明できません。OBO には中間 API 自身を audience とするアクセストークンが必要で、Graph 用トークンや ID トークンでは代用しません。APIM／App Service の MI に置き換えて C02 を成功扱いにしません。API Playground の Preview 操作は対象外です。
 
-### 6. 同梱アプリの仕様と配布経路を確定する
+### 7. 同梱アプリの仕様と配布経路を確定する
 
 [アプリ仕様](../assets/app/README.md) はレビュー用です。現時点ではアプリコード・配布 ZIP はありません。
 
 | 同梱するもの | 配布前に揃える内容 |
 |---|---|
-| 最小画面 | サインイン状態、合成入力、送信、応答、相関 ID、失敗した層 |
+| 最小画面 | サインイン状態、合成入力、送信、応答、会話メモ保存、相関 ID、失敗した層 |
 | ソースと固定版 | Python／FastAPI、固定依存関係、起動設定、配布版とハッシュ |
 | 認証 | 利用者本人の下流トークン。期限切れ・同意不足は停止し再認証を案内 |
-| 設定 | 固定の Foundry エンドポイントと対象エージェント。任意 URL を入力させない |
+| 設定 | 固定の Foundry エンドポイントと対象エージェント、Cosmos のアプリ専用 DB／コンテナー。任意 URL を入力させない |
 | 秘密値の扱い | トークン・Cookie・ヘッダー・本文をアプリログへ出さない |
 | 配布 | Linux B1・SCM 社内 IP 制限を維持できる方法 |
 
@@ -346,7 +420,7 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 > **Note** 要確認: 方針は暫定採用済みですが、実機での SCM 到達・配布権限・ビルド・起動は未検証です。403の場合は送信元IPと配布権限を分けて確認し、SCMを全公開にせず停止します。固定版 ZIP と起動設定が完成した段階で、この操作案を検証します。
 
-### 7. ツール経路用の APIM Basic v2 を作る
+### 8. ツール経路用の APIM Basic v2 を作る
 
 ツールの URL・プロトコル・認証・許可操作を確定してから行います。本人の呼び出し先として APIM を設定しません。
 
@@ -368,7 +442,7 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 > **画面の見え方** Basic と Basic v2 は別の SKU です。APIM の MI を有効化しても Agent Service の呼び出し元 ID にはなりません。
 
-### 8. ツール API の認証・許可先・quota を設定する
+### 9. ツール API の認証・許可先・quota を設定する
 
 1. APIM の [API] で対象のツール API を開きます。
 2. [デザイン] の [受信処理] でポリシーのコード エディターを開きます。
@@ -391,7 +465,7 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 公開ツールを追加しないこと、接続先・操作を固定すること、ツール編集権限を制限することを確認します。この運用を、Agent Service の送信ネットワーク全体を遮断する機能と説明しません。
 
-### 9. ツール経路の診断を追加する
+### 10. ツール経路の診断を追加する
 
 1. APIM の [監視] → [診断設定] を開きます。
 2. [診断設定を追加する] を選択します。
@@ -427,7 +501,9 @@ ApiManagementGatewayLogs
 ## 7.4. 完了条件
 
 - 統合サブネットの委任とサービス エンドポイントを確認した。
-- App Service の統合先と Foundry の VNet 規則が一致した。
+- App Service の統合先と Foundry／Cosmos DB の VNet 規則が一致した。
+- アプリ MI のデータロールがアプリ専用コンテナーに限定され、アプリから書いた JSON が Cosmos の Data Explorer で見えた。
+- Agent Service の `enterprise_memory`／コンテナーへアプリが書き込んでいないことを確認した。
 - 社内ブラウザからログインし、既存エージェントを利用者本人の権限で呼び出せた。
 - IP 制限された SCM を使って、固定版アプリを配布できた。
 - ツールの許可主体が成功し、未認証・許可外主体が拒否された。
@@ -442,10 +518,11 @@ ApiManagementGatewayLogs
 |---|---|---|
 | 統合候補が表示されない | リージョン・サブネット空き・委任・操作権限 | 今回専用の設定と照合。他の実施者のサブネットは使わない |
 | App Service → Foundry が403 | 統合先・サービス エンドポイント・VNet 規則・カスタム サブドメイン・API の適用範囲 | 同じエージェントのエンドポイントを照合。ネットワークとRBACを別々に確認 |
+| アプリの Cosmos 保存が403 | Cosmos の VNet 規則・サービス エンドポイント・App Service MI のデータロール・スコープ | キー認証や account 全体の権限へ切り替えず、アプリ専用コンテナーとの一致を確認 |
 | ログイン後に401／403 | トークンの宛先・期限・同意・本人のロール | トークンを表示せず設定を確認。MIへの置換で回避しない |
 | ツール用 APIM だけ拒否 | 親の ip-filter・許可主体・audience・バックエンド | 対象 API の有効なポリシーを確認。全体規則を一括解除しない |
 | SCM へ接続できない | 配布元の送信 IP・SCM 規則・担当者の権限 | 承認済み社内経路を確認。Cloud Shell 用に規則を広げない |
-| Linux に ZIP をドラッグできない | 使用している配布方式 | 非対応UIを繰り返さず、工程6の社内PCからのCLI配布を確認 |
+| Linux に ZIP をドラッグできない | 使用している配布方式 | 非対応UIを繰り返さず、工程7の社内PCからのCLI配布を確認 |
 | 403／429 | 拒否した層・適用ポリシー・ログ | quota未設定ならquota超過とは判定しない |
 | ログが0件 | 宛先・時間範囲・収集設定・閲覧権限 | 未到着はPending。本文ログを追加して代替しない |
 
@@ -453,7 +530,7 @@ ApiManagementGatewayLogs
 
 ## 7.6. 次の操作
 
-7.4 の完了条件を満たしてから、第8章の本人権限・入口・ツールの比較試験へ進みます。現時点の次工程は、[アプリ仕様](../assets/app/README.md) のレビュー、本人トークンの方式の確定、アプリの実装、暫定採用した社内PCからのCLI配布の実機検証です。第4章 G1〜G3 と第6章 C05 の保留も維持します。
+7.4 の完了条件を満たしてから、第8章の本人権限・入口・ツールの比較試験へ進みます。現時点の次工程は、[アプリ仕様](../assets/app/README.md) のレビュー、本人トークンの方式の確定、アプリの実装、暫定採用した社内PCからのCLI配布の実機検証です。第4章は G1〜G3 の根拠確認済みで、C08 の初回結果と Standard／Basic の分岐記録を引き継ぎます。第6章 C05 の保留は維持します。
 
 ## 7.7. 費用
 
@@ -515,6 +592,14 @@ ApiManagementGatewayLogs
 - 出典: [MCP サーバー認証を設定する](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/mcp-authentication)（取得日 2026-09-16）
 - 出典: [Azure IP Ranges and Service Tags – Public Cloud](https://www.microsoft.com/download/details.aspx?id=56519)（2026-09-14 版・取得日 2026-09-16）
 - 出典: [Azure Retail Prices API](https://learn.microsoft.com/ja-jp/rest/api/cost-management/retail-prices/azure-retail-prices)（取得日 2026-09-16）
+
+- 出典: [Cosmos DB の IP 規則とサービス エンドポイント](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-firewall)（取得日 2026-09-19）
+- 出典: [Cosmos DB の VNet 規則](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-vnet-service-endpoint)（取得日 2026-09-19）
+- 出典: [Cosmos DB のデータ面 RBAC](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（取得日 2026-09-19）
+- 出典: [Cosmos DB のコンテナー作成](https://learn.microsoft.com/en-us/azure/cosmos-db/quickstart-portal)（取得日 2026-09-19）
+- 出典: [App Service のマネージド ID](https://learn.microsoft.com/en-us/azure/app-service/overview-managed-identity)（取得日 2026-09-19）
+
+- 出典: [Cosmos DB データロール割当 CLI](https://learn.microsoft.com/en-us/cli/azure/cosmosdb/sql/role/assignment?view=azure-cli-latest)（取得日 2026-09-19）
 
 ---
 
