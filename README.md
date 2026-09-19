@@ -12,16 +12,13 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 ## 全体構成図
 
-> **Note** 画像は D14 採用前の参考図です。本人の呼び出しが APIM を通る部分と VNet の有無は現行構成と異なります。現在の経路は下の「今回作る環境」の図を参照します。
+![今回作る構成：本人は App Service から Foundry を直接呼び、APIM はツール専用](Azure.png)
 
-<details>
-<summary>旧構成の参考画像（D14 未反映）</summary>
+> **Note** 現行手順の設計判断 D14〜D17 を反映した目標構成です。Azure の実機検証は未実施です。本人の呼び出しは App Service の送信 VNet 統合・サービス エンドポイント経由で Foundry に直接接続し、APIM はツール経路に限定します。アプリ専用の Cosmos DB 保存は Agent Service の保存領域と分離します。
 
-![D14 採用前の参考図](Azure.png)
+> **補足** 第0〜10章を一つの環境で順番に進めます。Standard setup の成立は初回検証で確認し、成立しなければ別 account の Basic setup に分岐します。Cosmos 接続のみ Preview の例外を採用し、Application Insights の新規作成・本文トレースは保留します。Key Vault は独立した RBAC・監査の検証対象です。
 
-</details>
-
-> **補足** 図中の「Run 1／Run 2」は旧計画の基盤／アプリ追加の区分です。現在は第0〜10章を一つの環境で順番に進めます。Azure CLI／Bicep は原則 Cloud Shell 上の確認・任意の再現用（第7章の ZIP 配布とその認証・対象確認のみ社内 PC の CLI を使う暫定例外）で、Key Vault は本手順では RBAC・監査の検証対象です。実際のキーや接続文字列は保存しません。
+> **補足** Azure CLI／Bicep は原則 Cloud Shell 上の確認・任意の再現用（第7章の ZIP 配布とその認証・対象確認のみ社内 PC の CLI を使う暫定例外）です。Key Vault に実際のキーや接続文字列は保存しません。
 
 ## ハンズオン：ここから順番に進める
 
