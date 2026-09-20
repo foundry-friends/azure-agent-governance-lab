@@ -18,6 +18,31 @@
 
 この章では、作成済みのデータ基盤と Foundry を接続し、最初の応答を比較の基準として記録します。初期の認証と IP 制限を保った状態で動くことを目指し、その後に利用者別の権限、監査、呼び出しアプリを加えていきます。主線は Standard setup です。設定根拠と実機の到達を分け、C08 の初回実行で成立しなかった場合だけ Basic setup へ切り替えます。
 
+### 作業前に知っておくこと：Standard setup と Basic setup
+
+Setup は、Foundry Agent Service でエージェントを動かすための**環境構成方式**です。特に、会話履歴・アップロードしたファイル・検索用のベクトルデータを「どこに保存し、誰が保存先を管理するか」が異なります。どちらも Foundry account／project とモデルを使ってエージェントを動かします。
+
+**Basic setup** は Microsoft が管理する保存先を利用する方式です。エージェント用の保存基盤を自分たちで用意する作業を減らせます。**Standard setup** は、自分たちの Azure リソースを保存先として接続する方式です。このように自分たちのリソースを持ち込むことを **BYO（Bring Your Own）** と呼びます。
+
+| 比較する点 | Basic setup | Standard setup（本ラボの主線） |
+|---|---|---|
+| 保存先の管理主体 | Microsoft が管理する保存先を利用 | 自分たちの Azure リソースを接続・管理 |
+| 会話履歴・エージェントの状態 | サービス側の保存先 | 自分たちの Azure Cosmos DB |
+| アップロードしたファイル | サービス側の保存先 | 自分たちの Azure Storage |
+| 検索用のベクトルデータ | サービス側の保存先 | 自分たちの Azure AI Search |
+| 作業前に用意する保存基盤 | 上記3リソースをエージェントの保存先として用意する必要はない | 上記3リソースと、Foundry から利用する接続・権限が必要。本ラボは第3章のリソースを再利用 |
+| 自分たちで設定・確認する範囲 | Foundry のアクセス権やエージェント設定など。サービス側の保存基盤を直接設定する作業はない | 左記に加え、保存先のアクセス権・ネットワーク制限・ログなどを設定・確認 |
+| 構築・運用の手間 | 保存基盤の準備が少なく、動作確認を始めやすい | 保存基盤と接続の管理が増えるが、データの保存先を自分たちで統制できる |
+| このラボでの位置づけ | 承認済み設定でも Standard の到達が成立しないと分かった場合の代替 | データの保存先・認証・通信・監査を自分たちで設定し、統制を学ぶために採用 |
+
+Storage は「ファイル」、Cosmos DB は「会話や状態」、AI Search は「検索用データ」を受け持ちます。**第3章で作った3リソースを、本章でエージェントの保存基盤として結び付ける**のが Standard setup の作業です。Basic に分岐した場合、この3リソースを使った統制の検証は同じ形では行えないため、Standard の成功として記録しません。
+
+> **補足** Standard setup のネットワーク構成には公開ネットワークを使う方式と、専用の仮想ネットワークを持ち込む方式があります。本ラボは前者を前提に、社内 IP とリソースごとの許可設定で通信を制限します。「公開ネットワーク」は全 IP の接続を許可する意味ではありません。後者の閉域構成は本ラボの対象外です。今回の制限下でサービス間通信が成立するかは C08 で確認します。
+
+Basic への切り替えは、4.5 の切り分けと分岐手順に従います。単なる設定待ちやログ未到着で切り替えず、既存環境の保存先をその場で変更する操作とも考えません。
+
+この比較は [環境構成方式の公式比較](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup) と [Standard setup のリソース別の役割](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup) に基づきます。本ラボでの採用理由・分岐条件は、この手順書の方針です。
+
 ## 4.2. 前提
 
 第3章の Storage・Cosmos DB・AI Search の ARM ID、認証設定、社内公開 IP の許可リストを非公開の記録で確認します。構築担当には Foundry account/project の作成権限と、接続用ロールを割り当てる権限が必要です。利用担当の Foundry User と、構築担当の管理権限を混同しません。
@@ -566,7 +591,7 @@ Standard は4.4の完了条件を満たして第5章へ進みます。Basic に�
 - 出典: [Foundry 作成ウィザード](https://learn.microsoft.com/en-us/azure/ai-services/multi-service-resource)（取得日 2026-09-20）
 - 出典: [接続の種類](https://learn.microsoft.com/en-us/azure/foundry/how-to/connections-add)（取得日 2026-09-20）
 - 出典: [Standard setup の作成順と権限](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-20）
-- 出典: [公開 Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup)（取得日 2026-09-19）
+- 出典: [Basic／Standard の比較と公開 Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup)（取得日 2026-09-20）
 - 出典: [capability host の確認と Basic の分離](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/capability-hosts)（取得日 2026-09-19）
 - 出典: [キー無効化と反映の確認](https://learn.microsoft.com/en-us/azure/ai-services/disable-local-auth)（取得日 2026-09-20）
 - 出典: [Storage のリソース インスタンス規則](https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security-resource-instances)（取得日 2026-09-20）

@@ -16,6 +16,18 @@
 
 この章では、呼び出しアプリを利用者の入口として用意し、APIM を通す対象と許可する呼び出し先を整理します。アプリへのサインインと、その利用者が Foundry で操作できるかを区別して確認するための準備です。本人トークンの経路が確定してから、第8章でユーザーや接続元を変える試験に使います。
 
+### 作業前に知っておくこと：3つの経路と使う ID
+
+この章では、利用者の入口、会話メモの保存、ツールの入口を作ります。**アプリにサインインすること・Foundry を呼べること・Cosmos DB に保存できることは、それぞれ別の確認**です。
+
+| 経路 | 役割と使う ID | この章で用意するもの |
+|---|---|---|
+| ブラウザ → App Service → Foundry | Easy Auth（App Service の組み込み認証）でサインインし、利用者本人のトークンで Foundry を呼ぶ | アプリ、サインイン設定、送信経路。本人のロールは第5章を使用 |
+| App Service → Cosmos DB | [会話メモを保存] のときだけ、App Service の MI でアプリ専用コンテナーへ保存 | アプリ専用 DB／コンテナー、MI のデータ権限。Foundry の本人権限とは別 |
+| Agent Service → APIM → ツール | APIM がツールへの要求を受け付け、許可するサービス主体・呼び出し先・回数を制限 | ツール用の入口。ツール仕様が未確定のため工程8〜10は保留条件あり |
+
+APIM（API Management）は API の認証や呼び出し制御をまとめるサービスです。本ラボでは本人の Foundry 呼び出しは APIM を通りません。また、**VNet 統合はアプリから外へ出る通信の設定、アクセス制限はアプリへ入る通信の設定**です。片方の設定だけで両方向の制限を確認したとは扱いません。
+
 ## 7.2. 前提と作成前の停止条件
 
 第4章の G1〜G3 の根拠と、選択した Standard／Basic の C01・C08 初回結果を記録し、同じエージェントの応答、第5章の権限設定、第6章の通常診断の設定を確認済みであることを前提とします。第6章で保留した本文監査は保留のまま引き継ぎます。
@@ -70,6 +82,18 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 
 > **補足** ツール API の呼び出し回数等の quota と、LLM のトークン quota は別です。本人経路と内部モデル呼び出しは APIM を通らないため、そのトークン量を C09 のツール試験で検証したとは扱いません。具体的な quota・集計単位・許可主体はアプリ／ツール仕様の確定時に決めます。
 
+### 作業に使う画面と手元の情報
+
+| 操作場所 | 用途・用意するもの |
+|---|---|
+| 社内 PC の Azure portal | VNet・App Service・Cosmos・APIM の設定。テナント、サブスクリプション、専用 RG、社内 CIDR、既存リソースの ARM ID |
+| Microsoft Entra のアプリ登録画面 | 工程6のアプリ登録と API の委任許可・同意。担当者と権限を事前確認 |
+| Cloud Shell（Bash） | 通常の照会、Cosmos データロール、GUI にない認証設定。第5章の対象確認を行ってから使用 |
+| 社内 PC の Bash | 工程7の ZIP 作成・ハッシュ照合・配布。Cloud Shell とはファイルもサインイン状態も別 |
+| 社内ブラウザ | 配布後のサインイン・応答・会話メモ保存。構築担当と利用試験ユーザーのセッションを分離 |
+
+新規作成する VNet・統合サブネット・App Service・アプリ登録・アプリ専用 DB／コンテナーの名前と、承認されたアドレス範囲を非公開メモに揃えます。既存の Foundry project のエンドポイント・エージェント名、Cosmos の HTTPS エンドポイント、LAW の ID は前章の記録から取得します。URL や ID を名前から推測して入力しません。
+
 ### 開始・再開チェックリスト
 
 第4章の G1〜G3（根拠確認済み）と C08 の初回到達確認とは別に、この章の開始条件を確認します。
@@ -110,7 +134,7 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 | タグ | 第1章と同じ管理用タグ |
 
 7. [IP アドレス] で承認されたアドレス空間を設定します。
-8. 統合用サブネットを設定します。
+8. [サブネット] の既定の行を選択し、編集画面で名前・開始アドレス・サイズを上表に合わせます。保存後、アドレス空間内に収まっていることを確認します。
 9. [セキュリティ] で Bastion・Firewall 等の対象外の追加サービスを有効にしていないことを確認します。
 10. [タグ] を入力します。
 11. [確認および作成] で設定を照合します。
@@ -120,6 +144,7 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 15. [サブネットをサービスに委任] で `Microsoft.Web/serverFarms` を選択します。
 16. [サービス エンドポイント] で `Microsoft.CognitiveServices` と `Microsoft.AzureCosmosDB` を選択します。
 17. [保存] を選択します。
+18. 同じサブネットの編集画面を開き直し、委任・2つのサービス エンドポイントを照合します。
 
 > **画面の見え方** 作成ウィザードに委任やサービス エンドポイントの選択がない場合は、作成後のサブネット編集で設定します。統合用サブネットに VM や他サービスを配置しません。App Service の統合は送信専用で、社内PCをこの VNet に接続する操作ではありません。
 
@@ -148,7 +173,7 @@ az network vnet subnet show --resource-group '<専用RG名>' --vnet-name '<今�
 | デプロイ | この時点ではソース連携・コード配置を行わない |
 | 監視 | 既存の監視資産を利用。追加作成の既定値を確認 |
 
-4. [確認および作成] で Linux B1 と対象 RG を照合します。
+4. App Service プランの新規作成欄で今回専用のプラン名を入力し、価格プランの選択画面で B1 を選びます。[確認および作成] で Linux・B1・対象 RG を照合します。
 5. [作成] を選択します。
 6. 対象アプリの [設定] → [ネットワーク] を開きます。
 7. [受信トラフィックの構成] の [パブリック ネットワーク アクセス] を開きます。
@@ -164,11 +189,13 @@ az network vnet subnet show --resource-group '<専用RG名>' --vnet-name '<今�
 | IP アドレス ブロック | `<承認された社内CIDR>` |
 | 一致しない規則のアクション | 拒否 |
 
-10. [ルールの追加] を選択します。
-11. [保存] を選択します。
-12. SCM サイトで [メイン サイトルールを使用する] を選択します。
+10. [ルールの追加] を選択します。承認済み社内 CIDR が複数ある場合は、規則名と優先度を変えて1件ずつ追加します。
+11. 一致しない規則のアクションを [拒否] にし、[保存] を選択します。
+12. SCM（高度なツール）サイトのタブを開き、[メイン サイトルールを使用する] を選択します。
 13. [保存] を選択します。
-14. アプリの設定で HTTPS のみ・TLS 1.2 以上・FTP 無効を照合します。
+14. メインサイトと SCM の画面を開き直し、許可 CIDR・既定拒否・ルール共用を照合します。
+15. [設定] → [構成]（Configuration）→ [全般設定]（General settings）で HTTPS のみ・最低 TLS バージョン1.2以上・FTP 無効を確認します。異なる場合は今回の値へ変更して保存します。
+16. 保存後に設定を開き直し、反映結果を記録します。
 
 > **画面の見え方** メインサイトと SCM（配布・高度なツール用サイト）は別々の入口です。VNet 統合ではこれらの受信制限は設定されません。空のアプリを作成した後、コード・資格情報を配置する前に入口を制限します。作成時から拒否を要求する組織では、この作成後設定の手順を実行せず、作成時設定の方法を先に確定します。
 
@@ -216,6 +243,7 @@ az webapp show --resource-group '<専用RG名>' --name '<今回のアプリ名>'
 7. サービス エンドポイントが有効であることを確認します。
 8. [追加] を選択します。
 9. [保存] を選択します。
+10. [ネットワーク] を開き直し、追加したサブネットと既存の社内 IP 規則を照合します。
 
 | 項目 | 値 |
 |---|---|
@@ -272,11 +300,14 @@ az resource show --ids '<cosmos-resource-id>' --api-version 2024-11-15 --query '
 1. App Service の [Settings] > [Identity] を開きます。
 2. [System assigned] の [Status] を [On] にします。
 3. [Save] を選択します。
-4. アプリの MI の principal ID を非公開で確認します。
-5. Cosmos DB の [Data Explorer] を開きます。
-6. [New Container] を選択します。
-7. 下表の値を入力します。
-8. [OK] を選択します。
+4. 保存時に有効化の確認が出た場合は対象アプリを照合して確定します。
+5. [Identity] を開き直し、[Object (principal) ID] を非公開メモへ控えます。Foundry の project MI と区別します。
+6. Azure portal の検索欄から第3章の Cosmos DB を開きます。
+7. [Data Explorer] を選択します。
+8. 同名のアプリ用 DB／コンテナーが未作成の場合だけ、[New Container] を選択します。
+9. 下表の値を入力します。
+10. [OK] を選択します。
+11. 左側のデータベース一覧でアプリ用 DB を展開し、コンテナー名とパーティションキーを確認します。既存の場合も値を照合し、異なる設定を上書きしません。
 
 | 項目 | 値 |
 |---|---|
@@ -287,12 +318,14 @@ az resource show --ids '<cosmos-resource-id>' --api-version 2024-11-15 --query '
 
 > **Note** 要確認: [Settings]・[Identity]・[System assigned]・[Status]・[New Container] 等の日本語表示は初回に照合します。Data Explorer の作成・閲覧は検証担当者の権限で行い、アプリ MI の割当とは分けます。管理ロールだけでデータ閲覧が可能とは扱いません。
 
-Cosmos のデータ面ロール管理は portal 非対応のため、Cloud Shell（Bash）でアプリ専用コンテナーに限定して割り当てます。App Service MI へ account 全体や Agent Service の `enterprise_memory` の権限を与えません。
+Cosmos のデータ面ロール管理は portal 非対応のため、Azure portal 上部から Cloud Shell を開き、[Bash] を選択します。第5章の対象確認後、アプリ専用コンテナーに限定して割り当てます。App Service MI へ account 全体や Agent Service の `enterprise_memory` の権限を与えません。
 
 ```bash
 az cosmosdb sql role definition list --resource-group '<rg>' --account-name '<cosmos-account>' --query "[?roleName=='Cosmos DB Built-in Data Contributor'].{id:id,roleName:roleName}" --output json
 ```
 実行結果の確認ポイント: 組み込みのデータ面ロールの ID を確認します。
+
+次の作成コマンドの前に、直下の `role assignment list` で既存割当を照会します。同じ App Service MI・ロール・コンテナースコープの割当があれば、作成を省略します。広い既存権限が見つかった場合は追加せず、変更前の記録と照合して保留します。
 
 ```bash
 az cosmosdb sql role assignment create --resource-group '<rg>' --account-name '<cosmos-account>' --role-definition-id '<built-in-data-contributor-role-id>' --principal-id '<app-service-mi-principal-id>' --scope '/dbs/<app-db>/colls/<app-container>'
@@ -350,8 +383,8 @@ Easy Auth 転送＋REST を採用します（D17・2026-09-20）。入口の署�
 16. [Authentication] で作成した ID プロバイダーの編集を開きます。
 17. issuer URL を下表の値に変更します。
 18. 変更を保存します。
-19. [Configuration] で `WEBSITE_AUTH_AAD_ALLOWED_TENANTS` を下表の値として登録します。
-20. 設定を保存します。
+19. [Settings] → [Environment variables] → [App settings] を開き、[Add] で `WEBSITE_AUTH_AAD_ALLOWED_TENANTS` を下表の値として登録します。既存ならその行を編集します。
+20. 入力画面の [Apply]、一覧画面の [Apply] の順に選択します。再起動の確認が出た場合は確定し、反映後に設定名を確認します。
 
 | 項目 | 値 |
 |---|---|
@@ -360,18 +393,21 @@ Easy Auth 転送＋REST を採用します（D17・2026-09-20）。入口の署�
 
 > **補足** 簡易作成時の issuer URL はレガシーの `https://sts.windows.net` になるため、現行形式へ編集します。`/healthz`・`/api/*` を含め、Easy Auth の除外パスは作りません。
 
-21. Entra の [App registrations] を開きます。
-22. 今回のアプリ登録を選択します。
+21. Azure portal の検索欄から [Microsoft Entra ID] を開き、今回のテナントの [App registrations] を選択します。
+22. 工程6で入力したアプリ登録名を検索して選択し、[Overview] の client ID を App Service の認証プロバイダー設定と照合します。
 23. [API permissions] を選択します。
 24. [Add a permission] を選択します。
-25. Foundry（`https://ai.azure.com`）の委任されたアクセス許可を追加します。
-26. [Grant admin consent] を選択します。
+25. API の検索欄から Foundry（`https://ai.azure.com`）に対応する API を探し、対象を選択します。
+26. [Delegated permissions]（委任されたアクセス許可）を選択します。
+27. 対象 API の必要な委任許可を選択し、[Add permissions] を選択します。下記の初回照合ができない場合は追加しません。
+28. 同意権限のある担当者が [Grant admin consent] を選択し、対象テナント・API・委任許可を確認して確定します。
+29. [API permissions] を開き直し、追加した許可が Delegated であることと同意の状態を記録します。
 
-> **Note** 要確認: 一覧での表示名は初回に照合します（「Azure AI Foundry」「Microsoft Foundry」「Azure Machine Learning Services」のいずれか）。見つからなければここで停止します。委任されたアクセス許可が無ければ `.default` の要求は成功しません。
+> **Note** 要確認: API一覧での表示名・検索するタブ・必要な委任許可名は初回に照合します（「Azure AI Foundry」「Microsoft Foundry」「Azure Machine Learning Services」のいずれか）。見つからなければここで停止します。委任されたアクセス許可が無ければ `.default` の要求は成功しません。
 
 #### Cloud Shell でログインスコープを設定する（GUI に無い操作）
 
-以下は Cloud Shell（Bash）で行います。GET した全設定を残し、`loginParameters` だけを変更します。JSON 全体をログや共有証跡へ貼らず、確認出力も当該配列に限定します。
+以下は構築担当の Cloud Shell（Bash）で行います。対象アプリの名前・RG・サブスクリプションを非公開メモと照合し、全コマンドで同じ値を使います。リポジトリ外の非公開作業用ディレクトリを使い、既存の同名ファイルを上書きしません。GET が成功し、有効な JSON が保存されたことを確認してから編集・PUTへ進みます。GET した全設定を残し、`loginParameters` だけを変更します。JSON 全体をログや共有証跡へ貼らず、確認出力も当該配列に限定します。
 
 ```bash
 az rest --method get --url "https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app-name>/config/authsettingsV2?api-version=2024-11-01" --output json > authsettingsV2.json
@@ -390,7 +426,7 @@ path.write_text(json.dumps(data))
 print('loginParameters を更新しました')
 PY
 ```
-実行結果の確認ポイント: 既存の設定を保持し、`loginParameters` に本人用 Foundry スコープと更新用 `offline_access` を設定します。
+実行結果の確認ポイント: `loginParameters` 以外の設定を保持し、この配列を本人用 Foundry スコープと更新用 `offline_access` に置き換えます。既存配列に別用途の指定がある場合は、その必要性を確認するまで PUT を行いません。
 
 ```bash
 az rest --method put --url "https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app-name>/config/authsettingsV2?api-version=2024-11-01" --body @authsettingsV2.json --output none
@@ -406,9 +442,16 @@ az rest --method get --url "https://management.azure.com/subscriptions/<subscrip
 
 #### アプリ設定と起動コマンドを登録する
 
-1. 対象 App Service の [Configuration] を開きます。
-2. 下表の設定項目を 1 件ずつ登録します。
-3. 設定を保存します。
+1. 対象 App Service の [Settings] → [Environment variables] を開きます。
+2. [App settings] を選択します。
+3. [Add] を選択します。既存の項目を変更する場合は、その項目名を選択します。
+4. 名前欄と値欄に、下表の1項目を入力します。山括弧は実値へ置き換えます。
+5. 入力画面の [Apply] を選択します。
+6. 他の項目も手順3〜5で1件ずつ登録します。
+7. 一覧画面の [Apply] を選択し、再起動の確認が出た場合は確定します。
+8. [App settings] を開き直し、登録した設定名を確認します。個別の非秘密設定だけを必要に応じて照合し、全設定の値を表示・コピーしません。
+
+> **画面の見え方** 現行の Learn では環境変数は [Environment variables]、起動コマンド等は [Configuration] に分かれています。[Connection strings] には登録しません。日本語表示が異なる場合は各英語名と対応を照合します。
 
 | 項目 | 値 |
 |---|---|
@@ -424,11 +467,12 @@ az rest --method get --url "https://management.azure.com/subscriptions/<subscrip
 
 `MAX_PROMPT_CHARS` は既定 2000、`FOUNDRY_TIMEOUT_SECONDS` は既定 60 を使います。検証規則と App Service 側の設定は[同梱仕様](../assets/app/README.md#設定項目)を参照します。
 
-4. [General settings] を開きます。
-5. [Stack] に下表の値を選択します。
-6. [Major version] に下表の値を選択します。
-7. [Startup Command] に下表の値を入力します。
-8. 設定を保存します。
+9. [Settings] → [Configuration] → [General settings] を開きます。
+10. [Stack] に下表の値を選択します。
+11. Python のバージョン欄で3.12を選択します。
+12. [Startup Command] に下表の値を入力します。
+13. [保存] を選択し、再起動の確認が出た場合は確定します。
+14. 同じ画面を開き直し、ランタイムと起動コマンドを照合します。
 
 | 項目 | 値 |
 |---|---|
@@ -438,9 +482,9 @@ az rest --method get --url "https://management.azure.com/subscriptions/<subscrip
 
 > **Note** 要確認: 3.12 が一覧に無ければ一覧にある最も近い 3.x を選び、[README の requires_python](../assets/app/README.md#配布物と配布方式) を満たすことを確認します。代替版は未検証です。ポート 8000 の成立も初回に [Log stream] で照合します。
 
-9. 社内ブラウザでアプリの URL を開きます。
-10. 利用者としてサインインします。
-11. 同意画面に Foundry の許可が出ることを目視します。
+15. 構築担当とは別のブラウザプロファイルで、App Service の [概要] に表示された HTTPS URL を開きます。
+16. 第5章の開発用ユーザーとしてサインインします。
+17. 同意画面が出た場合は対象アプリと Foundry の許可を照合します。
 
 確認ポイント: 同意画面・`/.auth/me` の出力を証跡に貼りません。管理者同意済み等で同意画面が出ない場合、画面が無いことを成功の証拠にはせず設定と初回要求で照合します。アプリ画面と API は工程7の配布後に確認します。
 
@@ -465,6 +509,11 @@ az rest --method get --url "https://management.azure.com/subscriptions/<subscrip
 | 配布スクリプト | `scripts/package_app.sh`。`outputs/app-<version>.zip` と SHA256 を生成 |
 
 社内 PC の Bash でリポジトリ直下から実行します。版は英数字で開始し、英数字・`.`・`_`・`-` を使います。同じ版の上書きはしません。
+
+1. 社内 PC のターミナルで、第1章で確認したリポジトリの保存先へ移動します。Cloud Shell にだけ取得済みの場合は、社内 PC 側にも承認された配布対象版を用意します。
+2. `scripts/package_app.sh` と `assets/app/requirements.txt` があることを確認します。
+3. 配布対象のコミットと `<version>` を非公開メモに記録し、工程6の `APP_VERSION` と揃えます。
+4. 次のコマンドで ZIP を作成します。
 
 ```bash
 bash scripts/package_app.sh '<version>'
@@ -546,7 +595,7 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 #### 配布後に GUI と社内ブラウザで確認する
 
-1. App Service の [Deployment Center] を開きます。
+1. 構築担当で Azure portal の対象 App Service を開き、[Deployment Center] を選択します。
 2. [Logs] を選択します。
 
 確認ポイント: Oryx がルートの `requirements.txt` を使ってビルドを完了しています。送信成功だけで起動成功にしません。
@@ -555,12 +604,12 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 確認ポイント: uvicorn の起動を確認します。失敗時は設定名・Python ランタイム・ポートを照合し、例外全文や秘密値を共有証跡へ貼りません。
 
-4. 社内ブラウザでアプリの `/healthz` を開きます。
-5. サインインします。
+4. App Service の [概要] にある HTTPS URL の末尾に `/healthz` を付け、別のブラウザプロファイルで開きます。
+5. 第5章の開発用ユーザーとしてサインインします。
 
 確認ポイント: `{"ok": true, "app_version": "<version>"}` が返り、配布版と一致します。Easy Auth の除外パスは作らないので App Service の正常性チェック機能には使えません。
 
-6. 同じブラウザで `/` を開きます。
+6. 同じブラウザで URL の `/healthz` を外してアプリのトップ `/` を開き、対象エージェントの表示名を確認します。
 7. 入力欄に合成プロンプトを入力します。
 8. [送信] を選択します。
 
@@ -578,14 +627,17 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 確認ポイント: 保存成功、メモ ID、`userId` の先頭 12 文字が表示されます。
 
-10. 検証担当者として Cosmos DB の [Data Explorer] を開きます。
-11. アプリ専用コンテナーの該当 JSON を開きます。
+10. メモ ID と `userId` の先頭12文字を非公開に控えます。
+11. 構築・検証用のブラウザへ戻り、Cosmos DB の [Data Explorer] を開きます。
+12. 左側で `<app-db>` → `<app-container>` → [Items] を順番に開きます。
+13. 一覧を更新し、手順10のメモ ID に一致する項目を選択します。
+14. JSON の保存先・項目・時刻を下記の確認ポイントと照合します。
 
 確認ポイント: メモ ID と `userId` の先頭 12 文字が画面と一致し、`prompt`・`response`・`createdAt`・`appVersion` が存在します。生の oid を含まず、`enterprise_memory` には書かれていません。本文・ユーザー識別子を診断ログや共有証跡へ貼りません。
 
 ### 8. ツール経路用の APIM Basic v2 を作る
 
-ツールの URL・プロトコル・認証・許可操作を確定してから行います。本人の呼び出し先として APIM を設定しません。
+**ここから工程10まではツール仕様の確定待ちです。** ツールの URL・プロトコル・認証・許可操作が未確定のまま、APIM の作成やポリシー編集を始めません。工程1〜7の結果を記録してここで止め、7.4全体は未完了として残します。以下は仕様確定後に使う操作ドラフトです。本人の呼び出し先として APIM を設定しません。
 
 1. Azure portal の [リソースの作成] で [API Management] を検索します。
 2. [作成] を選択します。
@@ -607,11 +659,16 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 ### 9. ツール API の認証・許可先・quota を設定する
 
-1. APIM の [API] で対象のツール API を開きます。
-2. [デザイン] の [受信処理] でポリシーのコード エディターを開きます。
-3. 下表に従い、確定済みの入力値でトークン検証と quota を設定します。
-4. [保存] を選択します。
-5. [有効なポリシーの計算] で親から継承された規則を確認します。
+本工程の前提は、承認済みの仕様でツール API を登録できていることです。API のインポート方法と完成ポリシーは未確定のため、現時点では次の操作を実行しません。
+
+1. 対象 APIM の [APIs] → [APIs] を開きます。
+2. 登録済みの対象ツール API を選択します。[All APIs] を選んで全体へ適用する操作ではありません。
+3. [Design] を開き、適用対象の API／操作を照合します。
+4. [Inbound processing] のコードエディターアイコン [</>] を選択します。
+5. 現在のポリシーを非公開に記録し、下表を満たす確定済みポリシーを反映します。未確定の値を推測して XML を作りません。
+6. [Save] を選択します。
+7. [Calculate effective policy] で親から継承された規則を確認します。
+8. 対象 API／操作を開き直し、許可主体・バックエンド・集計キーと、意図しない社内 IP 制限の継承がないことを照合します。
 
 | 設定 | 確定する内容 |
 |---|---|
@@ -631,12 +688,14 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 ### 10. ツール経路の診断を追加する
 
 1. APIM の [監視] → [診断設定] を開きます。
-2. [診断設定を追加する] を選択します。
-3. 下表の宛先を設定します。
-4. [保存] を選択します。
-5. [API] → [すべての API] → [設定] の [診断ログ] で [Azure Monitor] の設定を開きます。
-6. 要求・応答本文と認証ヘッダーが収集対象でないことを確認します。
-7. 個別 API の上書きを確認します。
+2. 既存設定のカテゴリと送信先を確認し、同じ送信がない場合だけ [診断設定を追加する] を選択します。
+3. 設定名を入力し、ゲートウェイログの個別カテゴリを選択します。
+4. [Log Analytics ワークスペースへの送信] を選択し、サブスクリプション・LAW・リソース固有の保存方式を下表に合わせます。
+5. [保存] を選択し、同じ設定を開き直して照合します。
+6. [APIs] → [APIs] → [All APIs] → [Settings] を開きます。
+7. [Diagnostic Logs] まで移動し、[Azure Monitor] タブを開きます。
+8. 要求・応答本文と認証ヘッダーが収集対象でないことを確認します。変更した場合は [Save] を選択します。
+9. [APIs] に戻って対象ツール API を選び、同じ [Settings] → [Diagnostic Logs] → [Azure Monitor] で個別の上書きを確認します。
 
 | 項目 | 値 |
 |---|---|
@@ -648,7 +707,13 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 > **画面の見え方** APIM リソースの [ログ] を開き、今回の APIM をスコープにします。ワークスペース全体のログと混同しません。アプリの本人経路は APIM に現れないため、アプリ側の相関 ID と Foundry の結果を別に記録します。
 
-ツールを実装して合成入力を送信した後に、次を照会します。
+ツールを実装して合成入力を送信した後に、次の順で照会します。未実装の状態ではログを生成済みとは扱いません。
+
+1. 対象 APIM の [監視] → [ログ] を選択します。
+2. 照会スコープが今回の APIM であることを確認します。
+3. 第6章と同じ方法で [KQL モード] を開き、下記のクエリを貼り付けます。
+4. 試験時刻が直近30分以内に含まれることを確認して [実行] を選択します。
+5. 対象の API・操作・相関 ID に一致する行を記録します。
 
 ```kusto
 ApiManagementGatewayLogs
@@ -701,7 +766,7 @@ ApiManagementGatewayLogs
 
 ## 7.6. 次の操作
 
-7.4 の完了条件を満たしてから、第8章の本人権限・入口・ツールの比較試験へ進みます。現時点の次工程は、初回実行（工程6〜7）の結果の記録です。第4章は G1〜G3 の根拠確認済みで、C08 の初回結果と Standard／Basic の分岐記録を引き継ぎます。第6章 C05 の保留は維持します。
+7.4 の完了条件を満たしてから、第8章の本人権限・入口・ツールの比較試験へ進みます。現時点で必要なのは初回実行（工程6〜7）の結果記録と、ツール仕様・登録手順（工程8〜10）の確定です。工程1〜7だけを終えて第8章へ進む手順ではありません。第4章は G1〜G3 の根拠確認済みで、C08 の初回結果と Standard／Basic の分岐記録を引き継ぎます。第6章 C05 の保留は維持します。
 
 ## 7.7. 費用
 
@@ -723,15 +788,17 @@ ApiManagementGatewayLogs
 
 ### 出典
 
-- 出典: [配布の基本認証を無効にする](https://learn.microsoft.com/ja-jp/azure/app-service/configure-basic-auth-disable)（取得日 2026-09-16）
+- 出典: [App Service の環境変数と全般設定](https://learn.microsoft.com/en-us/azure/app-service/configure-common)（取得日 2026-09-20）
+
+- 出典: [配布の基本認証を無効にする](https://learn.microsoft.com/en-us/azure/app-service/configure-basic-auth-disable)（取得日 2026-09-20）
 - 出典: [Azure CLIの対話型サインイン](https://learn.microsoft.com/ja-jp/cli/azure/authenticate-azure-cli-interactively)（取得日 2026-09-16）
 - 出典: [Cloud Shellの実行環境](https://learn.microsoft.com/en-us/azure/cloud-shell/overview)（取得日 2026-09-16）
 
-- 出典: [仮想ネットワークの作成](https://learn.microsoft.com/ja-jp/azure/virtual-network/quickstart-create-virtual-network)（取得日 2026-09-16）
+- 出典: [仮想ネットワークの作成](https://learn.microsoft.com/en-us/azure/virtual-network/quickstart-create-virtual-network)（取得日 2026-09-20）
 - 出典: [サブネットの設定](https://learn.microsoft.com/ja-jp/azure/virtual-network/virtual-network-manage-subnet)（取得日 2026-09-16）
-- 出典: [VNet 統合の有効化](https://learn.microsoft.com/ja-jp/azure/app-service/configure-vnet-integration-enable)（取得日 2026-09-16）
+- 出典: [VNet 統合の有効化](https://learn.microsoft.com/en-us/azure/app-service/configure-vnet-integration-enable)（取得日 2026-09-20）
 - 出典: [Python アプリの作成](https://learn.microsoft.com/ja-jp/azure/app-service/quickstart-python)（取得日 2026-09-16）
-- 出典: [ZIP配布のLinux制約](https://learn.microsoft.com/ja-jp/azure/app-service/deploy-zip)（取得日 2026-09-16）
+- 出典: [ZIP配布のLinux制約](https://learn.microsoft.com/en-us/azure/app-service/deploy-zip)（取得日 2026-09-20）
 - 出典: [Foundry SDKと既存エージェントの呼び出し](https://learn.microsoft.com/ja-jp/azure/foundry/quickstarts/get-started-code)（取得日 2026-09-16）
 - 出典: [Foundry RBAC](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/rbac-foundry)（取得日 2026-09-16）
 - 出典: [quota-by-key](https://learn.microsoft.com/ja-jp/azure/api-management/quota-by-key-policy)（取得日 2026-09-16）
@@ -742,44 +809,44 @@ ApiManagementGatewayLogs
 
 - 出典: [APIM v2 レベル](https://learn.microsoft.com/ja-jp/azure/api-management/v2-service-tiers-overview)（取得日 2026-09-16）
 - 出典: [APIM の IP アドレス](https://learn.microsoft.com/ja-jp/azure/api-management/api-management-howto-ip-addresses)（取得日 2026-09-16）
-- 出典: [APIM の portal 作成](https://learn.microsoft.com/ja-jp/azure/api-management/get-started-create-service-instance)（取得日 2026-09-16）
-- 出典: [APIM のポリシー設定](https://learn.microsoft.com/ja-jp/azure/api-management/set-edit-policies)（取得日 2026-09-16）
+- 出典: [APIM の portal 作成](https://learn.microsoft.com/en-us/azure/api-management/get-started-create-service-instance)（取得日 2026-09-20）
+- 出典: [APIM のポリシー設定](https://learn.microsoft.com/en-us/azure/api-management/set-edit-policies)（取得日 2026-09-20）
 - 出典: [ip-filter](https://learn.microsoft.com/ja-jp/azure/api-management/ip-filter-policy)（取得日 2026-09-16）
 - 出典: [App Service の送信 IP](https://learn.microsoft.com/ja-jp/azure/app-service/overview-inbound-outbound-ips)（取得日 2026-09-16）
-- 出典: [App Service のアクセス制限](https://learn.microsoft.com/ja-jp/azure/app-service/app-service-ip-restrictions)（取得日 2026-09-16）
-- 出典: [App Service の Entra 認証](https://learn.microsoft.com/ja-jp/azure/app-service/configure-authentication-provider-aad)（取得日 2026-09-16）
-- 出典: [Easy Auth の OAuth トークン](https://learn.microsoft.com/ja-jp/azure/app-service/configure-authentication-oauth-tokens)（取得日 2026-09-16）
+- 出典: [App Service のアクセス制限](https://learn.microsoft.com/en-us/azure/app-service/app-service-ip-restrictions)（取得日 2026-09-20）
+- 出典: [App Service の Entra 認証](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-provider-aad)（取得日 2026-09-20）
+- 出典: [Easy Auth の OAuth トークン](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-oauth-tokens)（取得日 2026-09-20）
 - 出典: [OBO フロー](https://learn.microsoft.com/ja-jp/entra/identity-platform/v2-oauth2-on-behalf-of-flow)（取得日 2026-09-16）
 - 出典: [Entra トークン検証ポリシー](https://learn.microsoft.com/ja-jp/azure/api-management/validate-azure-ad-token-policy)（取得日 2026-09-16）
 - 出典: [APIM の MI 認証](https://learn.microsoft.com/ja-jp/azure/api-management/authentication-managed-identity-policy)（取得日 2026-09-16）
 - 出典: [トークン上限](https://learn.microsoft.com/ja-jp/azure/api-management/llm-token-limit-policy)（取得日 2026-09-16）
-- 出典: [APIM の監視と診断](https://learn.microsoft.com/ja-jp/azure/api-management/api-management-howto-use-azure-monitor)（取得日 2026-09-16）
+- 出典: [APIM の監視と診断](https://learn.microsoft.com/en-us/azure/api-management/api-management-howto-use-azure-monitor)（取得日 2026-09-20）
 - 出典: [ApiManagementGatewayLogs の列](https://learn.microsoft.com/ja-jp/azure/azure-monitor/reference/tables/apimanagementgatewaylogs)（取得日 2026-09-16）
 - 出典: [APIM の VNet 統合（Standard v2 / Premium v2）](https://learn.microsoft.com/ja-jp/azure/api-management/integrate-vnet-outbound)（取得日 2026-09-16）
 - 出典: [APIM と Azure 仮想ネットワーク](https://learn.microsoft.com/ja-jp/azure/api-management/virtual-network-concepts)（取得日 2026-09-16）
 - 出典: [App Service の VNet 統合](https://learn.microsoft.com/ja-jp/azure/app-service/overview-vnet-integration)（取得日 2026-09-16）
 - 出典: [App Service の NAT ゲートウェイ統合](https://learn.microsoft.com/ja-jp/azure/app-service/overview-nat-gateway-integration)（取得日 2026-09-16）
-- 出典: [Foundry Tools の仮想ネットワークを構成する](https://learn.microsoft.com/ja-jp/azure/ai-services/cognitive-services-virtual-networks)（取得日 2026-09-16）
+- 出典: [Foundry Tools の仮想ネットワークを構成する](https://learn.microsoft.com/en-us/azure/ai-services/cognitive-services-virtual-networks)（取得日 2026-09-20）
 - 出典: [MCP サーバー認証を設定する](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/mcp-authentication)（取得日 2026-09-16）
 - 出典: [Azure IP Ranges and Service Tags – Public Cloud](https://www.microsoft.com/download/details.aspx?id=56519)（2026-09-14 版・取得日 2026-09-16）
 - 出典: [Azure Retail Prices API](https://learn.microsoft.com/ja-jp/rest/api/cost-management/retail-prices/azure-retail-prices)（取得日 2026-09-16）
 
 - 出典: [Cosmos DB の IP 規則とサービス エンドポイント](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-firewall)（取得日 2026-09-19）
-- 出典: [Cosmos DB の VNet 規則](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-vnet-service-endpoint)（取得日 2026-09-19）
+- 出典: [Cosmos DB の VNet 規則](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-vnet-service-endpoint)（取得日 2026-09-20）
 - 出典: [Cosmos DB のデータ面 RBAC](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（取得日 2026-09-19）
-- 出典: [Cosmos DB のコンテナー作成](https://learn.microsoft.com/en-us/azure/cosmos-db/quickstart-portal)（取得日 2026-09-19）
-- 出典: [App Service のマネージド ID](https://learn.microsoft.com/en-us/azure/app-service/overview-managed-identity)（取得日 2026-09-19）
+- 出典: [Cosmos DB のコンテナー作成](https://learn.microsoft.com/en-us/azure/cosmos-db/quickstart-portal)（取得日 2026-09-20）
+- 出典: [App Service のマネージド ID](https://learn.microsoft.com/en-us/azure/app-service/overview-managed-identity)（取得日 2026-09-20）
 
 - 出典: [Cosmos DB データロール割当 CLI](https://learn.microsoft.com/en-us/cli/azure/cosmosdb/sql/role/assignment?view=azure-cli-latest)（取得日 2026-09-19）
 
 - 出典: [Linux Python と Oryx](https://learn.microsoft.com/en-us/azure/app-service/configure-language-python)（取得日 2026-09-19）
-- 出典: [Easy Auth トークンと更新](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-oauth-tokens)（取得日 2026-09-19）
+- 出典: [Easy Auth トークンと更新](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-oauth-tokens)（取得日 2026-09-20）
 - 出典: [Easy Auth ユーザー識別](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-user-identities)（取得日 2026-09-19）
-- 出典: [Entra プロバイダー設定](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-provider-aad)（取得日 2026-09-19）
+- 出典: [Entra プロバイダー設定](https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-provider-aad)（取得日 2026-09-20）
 - 出典: [既存エージェント REST](https://learn.microsoft.com/en-us/azure/foundry/quickstarts/get-started-code)（取得日 2026-09-19）
-- 出典: [ZIP 配布](https://learn.microsoft.com/en-us/azure/app-service/deploy-zip)（取得日 2026-09-19）
+- 出典: [ZIP 配布](https://learn.microsoft.com/en-us/azure/app-service/deploy-zip)（取得日 2026-09-20）
 - 出典: [Cosmos Entra 認証](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（取得日 2026-09-19）
-- 出典: [authsettingsV2 REST（本文未取得・トークン資料から参照）](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/update-auth-settings-v-2)（取得日 2026-09-19）
+- 出典: [authsettingsV2 REST](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/update-auth-settings-v-2?view=rest-appservice-2024-11-01)（取得日 2026-09-20）
 
 ---
 
