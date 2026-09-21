@@ -24,7 +24,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 | 章 | 手順 | この章でできること | 執筆状況（すべて実機未検証） |
 |---|---|---|---|
-| 0 | [事前確認と検証の進め方](docs/00-before-start.md) | 対象・予算・IP・試験ユーザーを決める | 手順ドラフト |
+| 0 | [Azure 環境の事前確認](docs/00-before-start.md) | 対象・予算・IP・試験ユーザーを決める | 手順ドラフト |
 | 1 | [準備と土台](docs/01-prerequisites.md) | RG・予算・Log Analytics ができる | 手順ドラフト |
 | 2 | [Key Vault を準備する](docs/02-key-vault.md) | 監査用 Key Vault ができる | 手順ドラフト |
 | 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | サービス到達設定と作成時／直後のキー無効化を反映。Storage の B18 は初回照合・未実行 |
@@ -36,7 +36,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 9 | [Policy・脅威検知・評価を試す](docs/09-policy-defender-eval.md) | Audit → Deny、検知・評価を体験する | GUI操作・判定ドラフト済み。Policyの安全な拒否試験／モデル制限／AI実検知／自動評価の到達は保留 |
 | 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | 最後に環境を削除し残存・費用を確認する | GUI操作・残存／費用判定ドラフト済み。削除・完全削除・課金の実機確認は未実施 |
 
-**開始: [第0章・事前確認と検証の進め方](docs/00-before-start.md)**
+**開始: [第0章・Azure 環境の事前確認](docs/00-before-start.md)**
 
 途中章にある「確認」は、その時点で存在するものだけを対象にします。第5章では権限を設定し、第7章でアプリを用意した後、第8章で権限の効き方を試します。第5章へ戻って試験する必要はありません。
 
@@ -87,7 +87,7 @@ flowchart LR
 
 ## 結果の記録
 
-チームで使う [Issue記録ガイド・記載例](docs/ISSUE_RECORDING_GUIDE.md) と [非公開の証跡テンプレート](checks/evidence_template.md) を用意しています。定例中は全員が共有Excelへ記録します。手順修正や計画見直しが必要な課題をGitHub Issueへ転記し、以後はIssueを正本として皆でクローズまで管理します。ExcelにはIssueリンクと「GitHubで管理」を残します。準備は[第0章](docs/00-before-start.md)を参照します。
+チームで使う [Issue記録ガイド・記載例](docs/ISSUE_RECORDING_GUIDE.md) と [非公開の証跡テンプレート](checks/evidence_template.md) を用意しています。定例中は全員が共有Excelへ記録します。手順修正や計画見直しが必要な課題をGitHub Issueへ転記し、以後はIssueを正本として皆でクローズまで管理します。ExcelにはIssueリンクと「GitHubで管理」を残します。Excel の配布先・証跡置き場・取りまとめ担当は検証チーム内で案内します。
 
 [確認項目 C01〜C10](checks/README.md) は番号を維持し、実施する章だけを整理しました。設定の存在・動作成功・拒否・未実施を区別します。記録は非公開の `evidence/` に残し、未実施は Pending とします。
 
