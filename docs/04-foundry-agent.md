@@ -30,12 +30,12 @@ Setup は、Foundry Agent Service でエージェントを動かすための**�
 | 会話履歴・エージェントの状態 | サービス側の保存先 | 自分たちの Azure Cosmos DB |
 | アップロードしたファイル | サービス側の保存先 | 自分たちの Azure Storage |
 | 検索用のベクトルデータ | サービス側の保存先 | 自分たちの Azure AI Search |
-| 作業前に用意する保存基盤 | 上記3リソースをエージェントの保存先として用意する必要はない | 上記3リソースと、Foundry から利用する接続・権限が必要。本ラボは第3章のリソースを再利用 |
+| 作業前に用意する保存基盤 | 上記 3 リソースをエージェントの保存先として用意する必要はない | 上記 3 リソースと、Foundry から利用する接続・権限が必要。本ラボは第3章のリソースを再利用 |
 | 自分たちで設定・確認する範囲 | Foundry のアクセス権やエージェント設定など。サービス側の保存基盤を直接設定する作業はない | 左記に加え、保存先のアクセス権・ネットワーク制限・ログなどを設定・確認 |
 | 構築・運用の手間 | 保存基盤の準備が少なく、動作確認を始めやすい | 保存基盤と接続の管理が増えるが、データの保存先を自分たちで統制できる |
 | このラボでの位置づけ | 承認済み設定でも Standard の到達が成立しないと分かった場合の代替 | データの保存先・認証・通信・監査を自分たちで設定し、統制を学ぶために採用 |
 
-Storage は「ファイル」、Cosmos DB は「会話や状態」、AI Search は「検索用データ」を受け持ちます。**第3章で作った3リソースを、本章でエージェントの保存基盤として結び付ける**のが Standard setup の作業です。Basic に分岐した場合、この3リソースを使った統制の検証は同じ形では行えないため、Standard の成功として記録しません。
+Storage は「ファイル」、Cosmos DB は「会話や状態」、AI Search は「検索用データ」を受け持ちます。**第3章で作った 3 リソースを、本章でエージェントの保存基盤として結び付ける**のが Standard setup の作業です。Basic に分岐した場合、この 3 リソースを使った統制の検証は同じ形では行えないため、Standard の成功として記録しません。
 
 > **補足** Standard setup のネットワーク構成には公開ネットワークを使う方式と、専用の仮想ネットワークを持ち込む方式があります。本ラボは前者を前提に、社内 IP とリソースごとの許可設定で通信を制限します。「公開ネットワーク」は全 IP の接続を許可する意味ではありません。後者の閉域構成は本ラボの対象外です。今回の制限下でサービス間通信が成立するかは C08 で確認します。
 
@@ -45,15 +45,15 @@ Basic への切り替えは、4.5 の切り分けと分岐手順に従います�
 
 ## 4.2. 前提
 
-第3章の Storage・Cosmos DB・AI Search の ARM ID、認証設定、社内公開 IP の許可リストを非公開の記録で確認します。構築担当には Foundry account/project の作成権限と、接続用ロールを割り当てる権限が必要です。利用担当の Foundry User と、構築担当の管理権限を混同しません。
+第3章の Storage・Cosmos DB・AI Search の ARM ID、認証設定、社内公開 IP の許可リストを非公開の記録で確認します。構築担当には Foundry account／project の作成権限と、接続用ロールを割り当てる権限が必要です。利用担当の Foundry User と、構築担当の管理権限を混同しません。
 
 | 手元に用意する情報 | 確認元 |
 |---|---|
 | 検証用サブスクリプション ID・専用 RG・社内 CIDR | 第1章の `.env` と非公開の作業メモ |
-| Storage・Cosmos DB・AI Search の名前と ARM ID | 第3章で保存した3つの ID |
+| Storage・Cosmos DB・AI Search の名前と ARM ID | 第3章で保存した 3 つの ID |
 | Log Analytics ワークスペース（LAW）の名前と ARM ID | 第1章。応答試験前の診断設定の宛先 |
 | Foundry account 名 | 今回用の未使用の名前。以下の `<account>` をこの名前へ置換 |
-| 初期 project 名と MI の principal ID | 作成後に工程2で確認。作成前に推測して記入しない |
+| 初期 project 名と MI の principal ID | 作成後に工程 2 で確認。作成前に推測して記入しない |
 
 > **画面の見え方** Azure portal（`portal.azure.com`）はリソースの作成・ネットワーク・IAM、Microsoft Foundry（`ai.azure.com`）は接続・モデル・エージェントに使います。別タブで開き、画面を切り替えるたびに対象 account／project を確認します。Bash と PowerShell の変数・選択サブスクリプションは共有される前提にしません。
 
@@ -63,13 +63,13 @@ G1〜G3 は従来の停止条件の管理番号です。2026-09-19 の判断 A10
 
 | 条件 | 判断 | 確認できたこと（2026-09-19・Learn） |
 |---|---|---|
-| G1: Cosmos DB 接続の提供範囲 | Cosmos 接続だけ Preview を承認（A10） | 接続一覧は Preview・接続作成はコードのみとしています。一方、Azure portal の Foundry 作成ウィザード [Storage] > [Agent service] > [Select Resources] で3リソースを束ねる Standard setup の GUI 手順があります（Learn 2026-07-09）。Foundry portal から Cosmos 接続を後付けする手順とは別です |
+| G1: Cosmos DB 接続の提供範囲 | Cosmos 接続だけ Preview を承認（A10） | 接続一覧は Preview・接続作成はコードのみとしています。一方、Azure portal の Foundry 作成ウィザード [Storage] > [Agent service] > [Select Resources] で 3 リソースを束ねる Standard setup の GUI 手順があります（Learn 2026-07-09）。Foundry portal から Cosmos 接続を後付けする手順とは別です |
 | G2: サービス間の通信経路 | 設定根拠を確認・成立見込み（A11） | 比較表に Standard Setup with Public Networking があります。第3章の Search 信頼サービス例外、Storage の Foundry リソース インスタンス規則、Cosmos の `0.0.0.0` と MI の権限で到達を試します |
 | G3: 作成時の認証 | GUI と限定した Cloud Shell を併用（A12・A13） | Cosmos は作成時、Storage は項目があれば作成時／無ければ直後、Search は作成直後の GUI でキー無効。Foundry account はウィザード作成直後に Cloud Shell（PowerShell）で無効化します |
 
 > **Note** 「IP 制限付き BYO で公開 Standard setup が動く」と明言する Learn の文はありません。G2 は設定の根拠を確認した段階で、到達は本章 C08 の初回実行で確定します。D14 の App Service 送信 VNet 統合では Agent Service 自体の送信経路は変わりません。
 
-Standard setup は3リソース同時 BYO が必須です。[ネットワーク構成資料のエラー説明](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/virtual-networks)は “You can't create a secured standard agent in Foundry without all three resources provided.” としています。Cosmos だけを外す構成は採用しません。
+Standard setup は 3 リソース同時 BYO が必須です。[ネットワーク構成資料のエラー説明](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/virtual-networks)は “You can't create a secured standard agent in Foundry without all three resources provided.” としています。Cosmos だけを外す構成は採用しません。
 
 | リソース | GUI でのキー無効化 | Cloud Shell の扱い |
 |---|---|---|
@@ -86,7 +86,7 @@ Learn の手動作成順は「基盤 → account・project・接続 → 管理�
 - [ ] G2: 第3章のリソース別設定と、到達を C08 で確認する方針を読んだ。
 - [ ] G3: GUI／Cloud Shell の分担と、作成直後・モデル配置前のキー無効化の順序を読んだ。
 - [ ] 第3章の完了条件、操作対象の RG・リソース・変更前設定を確認した。
-- [ ] ロール割当権限を確認し、A13 の401試験の実施条件と、秘密値の取得・記録をしない方針を読んだ。
+- [ ] ロール割当権限を確認し、A13 の 401 試験の実施条件と、秘密値の取得・記録をしない方針を読んだ。
 
 根拠を読んだ項目はチェックできます。到達の合格は作成後の C08 で別に判定します。根拠 URL・対象条件・実行日時・設定と動作の結果は非公開の `evidence/` に記録し、キーの値は含めません。
 
@@ -97,13 +97,13 @@ Learn の手動作成順は「基盤 → account・project・接続 → 管理�
 1. 社内 PC のブラウザで [Foundry の作成画面](https://portal.azure.com/#create/Microsoft.CognitiveServicesAIFoundry) を開きます。
 2. [Basics] に下表の基本情報を入力します。
 3. [Network] を開き、[Inbound Access] で [Selected networks] を選択します。
-4. 社内公開 CIDR を1件ずつ入力し、承認済み一覧と照合します。
+4. 社内公開 CIDR を 1 件ずつ入力し、承認済み一覧と照合します。
 5. [Identity] でシステム割り当てマネージド ID をオンにします。
 6. [Encryption] で Microsoft マネージド キーを選択します。
 7. [Storage] の [Agent service] で [Select Resources] を選択します。
 8. 各リソースの選択欄で第3章の名前を選び、サブスクリプション・RG・ARM ID を非公開メモと照合します。新規リソースの作成は選びません。
 9. [Storage] 上段の Key Vault／Application Insights が下表の方針と一致することを確認します。
-10. [Review + create] を開き、下表の値と選択済み3リソースを照合します。
+10. [Review + create] を開き、下表の値と選択済み 3 リソースを照合します。
 11. [Create] を選択します。
 12. デプロイが完了するまで待ちます。
 13. ポータル上部の検索欄で作成した Foundry 名を検索し、対象リソースの [概要] を開きます。
@@ -113,17 +113,17 @@ Learn の手動作成順は「基盤 → account・project・接続 → 管理�
 |---|---|
 | サブスクリプション / RG | 今回の実施者専用の対象 |
 | リージョン | Japan East |
-| Foundry 名 | `<prefix>-<account-suffix>`。接頭辞は実施者略号を含み最大9文字 |
+| Foundry 名 | `<prefix>-<account-suffix>`。接頭辞は実施者略号を含み最大 9 文字 |
 | 受信アクセス | 選択したネットワーク＋社内 CIDR。第7章で統合サブネットの VNet 規則を追加 |
 | システム割り当てマネージド ID | オン |
 | 暗号化 | Microsoft マネージド キー |
-| Agent service のリソース | 第3章で記録した3つの ARM ID と一致 |
+| Agent service のリソース | 第3章で記録した 3 つの ARM ID と一致 |
 | 資格情報用 Key Vault | 第2章の Vault は独立した監査対象。ここではカスタム接続せず Microsoft 管理の仕組みを使用 |
 | Application Insights | 作成・接続しない。第6章の本文監査／Entra 接続の保留を維持 |
 
 > **Note** 要確認: 根拠資料が英語のため [Basics]（基本）・[Network]（ネットワーク）・[Identity]（ID）・[Encryption]（暗号化）・[Storage]・[Review + create]・[Create] と配下の項目の日本語表示は初回に照合します。想定外のリソース作成や Application Insights 接続が必須になる場合は確定せず記録します。
 
-> **Note** 所要時間は初回で記録します。Learn の30〜45分は手動作成手順全体の値であり、ウィザードの完了時間の保証ではありません。
+> **Note** 所要時間は初回で記録します。Learn の 30〜45 分は手動作成手順全体の値であり、ウィザードの完了時間の保証ではありません。
 
 #### 作成直後に Foundry account のキーを無効化する（A13）
 
@@ -153,7 +153,7 @@ Set-AzCognitiveServicesAccount -ResourceGroupName '<rg>' -Name '<account>' -Disa
 ```
 実行結果の確認ポイント: `DisableLocalAuth` が `True` であることを確認します。
 
-> **Note** 反映は数分〜数時間かかります。Learn は「古いキーでデータ面を呼び、HTTP 401（`Access denied due to invalid subscription key or wrong API endpoint`）が返るまで無効化完了と扱わない」としています。キー無しの 401 や無効な文字列の 401 で代替しません。
+> **Note** 反映には数分〜数時間かかります。Learn は「古いキーでデータ面を呼び、HTTP 401（`Access denied due to invalid subscription key or wrong API endpoint`）が返るまで無効化完了と扱わない」としています。キーなしの 401 や無効な文字列の 401 で代替しません。
 
 **古いキーで 401 を確認する（公式手順に準ずる例外・2026-09-19 承認）**
 
@@ -168,7 +168,7 @@ Set-AzCognitiveServicesAccount -ResourceGroupName '<rg>' -Name '<account>' -Disa
 ```bash
 read -s -p "old key: " OLD_KEY
 ```
-実行結果の確認ポイント: `old key:` の後で入力待ちになることを確認します。ここに手順2でコピーしたキーを貼り付け、Enter を押します。入力内容は表示されません。
+実行結果の確認ポイント: `old key:` の後で入力待ちになることを確認します。ここに手順 2 でコピーしたキーを貼り付け、Enter を押します。入力内容は表示されません。
 
 6. `<account>` を今回の account 名に置き換え、下の HTTP ステータス確認を実行します。
 
@@ -234,7 +234,7 @@ echo "${OLD_KEY:-cleared}"
 | 項目 | 値 |
 |---|---|
 | `publicNetworkAccess` | `Enabled` |
-| `disableLocalAuth` | `true`（401試験は別） |
+| `disableLocalAuth` | `true`（401 試験は別） |
 | `networkAcls.defaultAction` | `Deny` |
 | `networkAcls.ipRules` | 社内公開 IP の許可リスト |
 | account / project | 今回専用の対象。MI を取り違えない |
@@ -247,7 +247,7 @@ echo "${OLD_KEY:-cleared}"
 2. 右上の [Manage] を選択します。
 3. [Project details] を開きます。
 4. [Connected resources] を選択します。
-5. 接続一覧から Cosmos DB・Storage・AI Search の各接続を1本ずつ開きます。
+5. 接続一覧から Cosmos DB・Storage・AI Search の各接続を 1 本ずつ開きます。
 6. 接続名・対象リソース・認証方式を下表と照合します。
 7. 接続名と第3章の ARM ID の対応を非公開メモに記録します。
 
@@ -267,7 +267,7 @@ echo "${OLD_KEY:-cleared}"
 | `storageConnections` | Storage の接続名 |
 | `vectorStoreConnections` | AI Search の接続名 |
 
-接続の認証方式だけを確認し、資格情報を表示する操作は行いません。capability host は GUI に管理操作がないため、Cloud Shell の [Bash] に切り替えて REST の GET で確認します。配列へ入るのは ARM ID ではなく接続名です。以下の `<subscription-id>`・`<rg>`・`<account>`・`<project>` は、工程2の記録から置き換えます。初期値のまま実行しません。
+接続の認証方式だけを確認し、資格情報を表示する操作は行いません。capability host は GUI に管理操作がないため、Cloud Shell の [Bash] に切り替えて REST の GET で確認します。配列に入るのは ARM ID ではなく接続名です。以下の `<subscription-id>`・`<rg>`・`<account>`・`<project>` は、工程 2 の記録から置き換えます。初期値のまま実行しません。
 
 Bash へ戻った後、まず対象サブスクリプションを選択します。
 
@@ -284,14 +284,14 @@ az account show --output table
 ```bash
 az rest --method get --url 'https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/capabilityHosts?api-version=2025-06-01'
 ```
-実行結果の確認ポイント: 今回の account の host が1つ存在し、種類 `Agents`・状態 `Succeeded` であることを確認します。
+実行結果の確認ポイント: 今回の account の host が 1 つ存在し、種類 `Agents`・状態 `Succeeded` であることを確認します。
 
 ```bash
 az rest --method get --url 'https://management.azure.com/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>/capabilityHosts?api-version=2025-06-01'
 ```
-実行結果の確認ポイント: 今回の project の host が成功し、3種類の配列が接続名と一致することを確認します。
+実行結果の確認ポイント: 今回の project の host が成功し、3 種類の配列が接続名と一致することを確認します。
 
-接続や host が不足する場合は B17 の差異として4.5で切り分けます。IAM の追加では接続や host を作れません。Cosmos 接続の後付け GUI を想定せず、ウィザードの選択・作成結果を確認します。
+接続や host が不足する場合は B17 の差異として 4.5 で切り分けます。IAM の追加では接続や host を作れません。Cosmos 接続の後付け GUI を想定せず、ウィザードの選択・作成結果を確認します。
 
 ### 4. サービス接続用の権限を確認する
 
@@ -318,7 +318,7 @@ SMI はシステム割り当て MI、UMI はユーザー割り当て MI です�
 |---|---|
 | Cosmos DB account / Storage account / AI Search | ポータル上部でリソース名を検索 → 対象を選択 → [アクセス制御 (IAM)] |
 | Storage の Blob コンテナー | 対象 Storage → [データ ストレージ] → [コンテナー] → 対象コンテナー → [アクセス制御 (IAM)] |
-| Foundry project | 工程2で特定した project の Azure リソース → [アクセス制御 (IAM)] |
+| Foundry project | 工程 2 で特定した project の Azure リソース → [アクセス制御 (IAM)] |
 
 
 3. [ロールの割り当て] タブで既存の主体・ロール・スコープを照合します。
@@ -328,7 +328,7 @@ SMI はシステム割り当て MI、UMI はユーザー割り当て MI です�
 7. MI の行は [アクセスの割り当て先] で [マネージド ID] を選択します（Foundry User の行はユーザーを選択）。
 8. [メンバーを選択する] を開きます。
 9. サブスクリプションと対象 MI を選択し、[選択] を押します。
-10. 表示された主体を、工程2で控えた principal ID と照合します。
+10. 表示された主体を、工程 2 で控えた principal ID と照合します。
 11. [レビューと割り当て] を選択します。
 12. 確認画面でロール・主体・スコープを見直します。
 13. 再度 [レビューと割り当て] を選択します。
@@ -336,7 +336,7 @@ SMI はシステム割り当て MI、UMI はユーザー割り当て MI です�
 
 > **Note** project MI が候補に出ない場合は、表示名だけで似た account MI を選ばず、対象 project・principal ID・割当権限を確認します。未生成のコンテナーや特定できない主体は B17 として保留します。
 
-> **補足** Cosmos DB のデータ面 RBAC は Azure portal では管理できません。`enterprise_memory` のロールだけは IAM で代用せず、GUI にない操作として Cloud Shell（Bash）を使います。データベース／Blob コンテナーが未生成なら架空のスコープに割り当てず、host の失敗を4.5で確認します。
+> **補足** Cosmos DB のデータ面 RBAC は Azure portal では管理できません。`enterprise_memory` のロールだけは IAM で代用せず、GUI にない操作として Cloud Shell（Bash）を使います。データベース／Blob コンテナーが未生成なら架空のスコープに割り当てず、host の失敗を 4.5 で確認します。
 
 ```bash
 az cosmosdb sql role definition list --resource-group '<rg>' --account-name '<cosmos-account>' --query "[?roleName=='Cosmos DB Built-in Data Contributor'].{id:id,roleName:roleName}" --output json
@@ -355,7 +355,7 @@ az cosmosdb sql role assignment create --resource-group '<rg>' --account-name '<
 ```
 実行結果の確認ポイント: 不足時だけ実施し、対象 MI と `/dbs/enterprise_memory` の割当が作成されたことを確認します。
 
-同じ一覧コマンドで再照合します。Search RBAC の反映には5〜10分を見込みます。Cosmos DB は Serverless を維持し、Provisioned の RU/s 値を設定しません。
+同じ一覧コマンドで再照合します。Search RBAC の反映には 5〜10 分を見込みます。Cosmos DB は Serverless を維持し、Provisioned の RU/s 値を設定しません。
 
 #### C08 用の最小診断設定を応答試験前に準備する
 
@@ -417,7 +417,7 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 7. ツールが追加されていないことを確認します。
 8. 設定を保存した状態でエージェント一覧へ戻り、`governance-lab-agent` を開き直します。
 9. 名前・モデル配置・指示・ツールなしの状態が保持されていることを確認します。
-10. プレイグラウンドのチャット入力欄に、下の2つ目のコードブロックにある架空の会議メモを貼り付けます。
+10. プレイグラウンドのチャット入力欄に、下の 2 つ目のコードブロックにある架空の会議メモを貼り付けます。
 11. 送信ボタンを選択します。
 12. 応答を待ち、日時と議題が入力内容に沿っていることを確認します。
 13. 試験時刻・project・エージェント名・配置名・結果を非公開の証跡に記録します。
@@ -440,7 +440,7 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 
 ### 7. C08 の初回到達を確認する
 
-応答確認の直後に、試験時刻と対象 project を照合します。Data Explorer の閲覧権限は、直下の確認を済ませてから開きます。
+応答確認の直後に、試験時刻と対象 project を照合します。Data Explorer は、直下の閲覧権限の確認を済ませてから開きます。
 
 **Data Explorer を開く前の準備**
 
@@ -465,7 +465,7 @@ table("<log-table-name>")
 | order by TimeGenerated desc
 | take 20
 ```
-実行結果の確認ポイント: [実行] を選択し、今回の試験時刻のレコードを確認します。件数だけでは成功にせず、結果コードと Foundry MI の主体情報を照合します。2時間より前の試験は期間を調整します。
+実行結果の確認ポイント: [実行] を選択し、今回の試験時刻のレコードを確認します。件数だけでは成功にせず、結果コードと Foundry MI の主体情報を照合します。2 時間より前の試験は期間を調整します。
 
 > **Note** 要確認: ログ画面のクエリ編集モードへの切替、実際のテーブル名・結果列・主体列は初回に照合します。テーブルがない、対応する要求がない、主体を特定できない場合は Pending です。
 
@@ -476,19 +476,19 @@ table("<log-table-name>")
 | Cosmos DB | `enterprise_memory` 内の project 対応コンテナー生成。新ランタイムの `agent-definitions-v1`／`run-state-v1` は初回呼び出し時に動的作成されるため、実名と project の対応を記録 |
 | Storage / Search | StorageBlobLogs / AzureDiagnostics 等の実際の保存先で、Foundry の MI に対応する要求と成功結果を確認 |
 
-> **Note** Data Explorer は検証担当者にもデータ面の閲覧権限が必要です。工程4と同じデータロール照会・割当方法で Cosmos DB Built-in Data Reader を対象データベースへ割り当てます。MI 向けの書き込み権限を人へ流用しません。日本語表示とコンテナー接頭辞の実際の形式は初回で照合します。
+> **Note** Data Explorer は検証担当者にもデータ面の閲覧権限が必要です。工程4と同じデータロール照会・割当方法で Cosmos DB Built-in Data Reader を対象データベースへ割り当てます。MI 向けの書き込み権限を人へ流用しません。日本語表示とコンテナー接頭辞の実際の形式は初回に照合します。
 
-> **Note** 要確認: 許可外 IP 試験で呼ぶ GA データ面 API は、今回作成したエージェントの API 世代と照合して初回に確定します。管理面の GET、認証なしの401、条件付きアクセスでの拒否ではネットワーク拒否を証明できません。
+> **Note** 要確認: 許可外 IP 試験で呼ぶ GA データ面 API は、今回作成したエージェントの API 世代と照合して初回に確定します。管理面の GET、認証なしの 401、条件付きアクセスでの拒否ではネットワーク拒否を証明できません。
 
-テキスト1往復では Storage／Search の実要求が発生するとは限りません。ログがないだけで到達不能とは判定せず、収集開始・遅延・操作発生を確認します。要求を発生させる GA のファイル操作／検索の手順が未確定なら、その行は Pending として必要な試験を確定します。未許可のツールを追加したり、本文ログを代用したりしません。到達拒否が確認された場合は4.5で切り分けます。
+テキスト 1 往復では Storage／Search の実要求が発生するとは限りません。ログがないだけで到達不能とは判定せず、収集開始・遅延・操作発生を確認します。要求を発生させる GA のファイル操作／検索の手順が未確定なら、その行は Pending として必要な試験を確定します。未許可のツールを追加したり、本文ログを代用したりしません。到達拒否が確認された場合は 4.5 で切り分けます。
 
 ## 4.4. 完了条件
 
 C01（初回接続）と C08 の初回接続部分を対象別に記録します。後の章のツール試験まで Pass にしません。
 
 - G1〜G3 の根拠と A10〜A13 の適用を記録した。
-- account／project／project MI と接続3本を特定した。
-- 社内 IP 制限・Entra 認証・Foundry のキー無効設定と古いキーの401を確認した。
+- account／project／project MI と接続 3 本を特定した。
+- 社内 IP 制限・Entra 認証・Foundry のキー無効設定と古いキーの 401 を確認した。
 - account と project の capability host が成功し、接続名が一致した。
 - 必要な管理ロール・データロールを必要なスコープで確認した。
 - 社内ブラウザで合成入力に応答し、モデル配置名・バージョン・指示・時刻を記録した。
@@ -502,37 +502,37 @@ C01（初回接続）と C08 の初回接続部分を対象別に記録します
 
 1. account 作成・host 作成・モデル配置・チャットのどの操作で失敗したかを記録します。
 2. 接続先 ID・MI・対象時刻・エラーコード・相関 ID を非公開で照合します。
-3. 第3章のネットワーク設定と工程4のロールを照合します。
-4. Cosmos／Search の最大15分の設定反映、Search RBAC の5〜10分の反映を待って再試験します。
+3. 第3章のネットワーク設定と工程 4 のロールを照合します。
+4. Cosmos／Search の最大 15 分の設定反映、Search RBAC の 5〜10 分の反映を待って再試験します。
 5. 対象ごとの要求ログと成否から、ネットワーク拒否・認証拒否・未実施を区別します。
 
 | 症状 | 確認と対応 |
 |---|---|
 | Storage 到達失敗 | リソース インスタンス規則が今回の Foundry account を指すか、project MI のコンテナー別データロールがあるか |
-| Search の403 / SearchIndexNotFound | 信頼サービス例外がオンか、project MI の Search Index Data Contributor と Search Service Contributor があるか |
+| Search の 403 / SearchIndexNotFound | 信頼サービス例外がオンか、project MI の Search Index Data Contributor と Search Service Contributor があるか |
 | Cosmos 到達失敗 | 社内 CIDR と `0.0.0.0`、公開ネットワーク Enabled、キー無効、`enterprise_memory` のデータロールを照合 |
-| `CapabilityHostProvisioningFailed` / host が Failed | Cosmos の RU 上限不足が典型原因。Learn の合計3000 RU/s以上という要件とアカウント制限を確認。Serverless を維持し、勝手に Provisioned や SKU を変更しない |
-| 3リソース不足のエラー | 接続3本と host の参照を照合。Cosmos だけを外さない |
-| B17: 接続・host がない | ウィザードの [Storage] > [Agent service] の選択と作成結果を確認。ロール不足は工程4で補うが、接続／host の後付け GUI は推測しない |
-| host の409 | 1スコープ1つの制約と進行中の作成を確認。重複作成しない |
-| モデル配置失敗 | リージョン・GAバージョン・配置の種類・クォータを確認 |
+| `CapabilityHostProvisioningFailed` / host が Failed | Cosmos の RU 上限不足が典型原因。Learn の合計 3000 RU/s 以上という要件とアカウント制限を確認。Serverless を維持し、勝手に Provisioned や SKU を変更しない |
+| 3 リソース不足のエラー | 接続 3 本と host の参照を照合。Cosmos だけを外さない |
+| B17: 接続・host がない | ウィザードの [Storage] > [Agent service] の選択と作成結果を確認。ロール不足は工程 4 で補うが、接続／host の後付け GUI は推測しない |
+| host の 409 | 1 スコープ 1 つの制約と進行中の作成を確認。重複作成しない |
+| モデル配置失敗 | リージョン・GA バージョン・配置の種類・クォータを確認 |
 | キー無効設定が True でも実キーが 200 を返す | 反映待ち。時間を置いて 401 確認を再実行。再有効化はしない。401 を確認するまでモデル配置に進まない |
 | Storage／Search ログがない | 収集設定・時間範囲・閲覧権限・実要求の発生を確認。空ログだけで Basic へ分岐しない |
 
 ### Standard setup が成立しない場合だけ Basic setup に切り替える
 
-G2 の初回試験で、承認済みの設定と権限を満たしても3リソースへの到達が成立しないと分かった場合の代替です。B17 の照合待ち、ログ未到着、モデルクォータ不足だけでは切り替えません。ネットワークを全許可にする復旧は行いません。
+G2 の初回試験で、承認済みの設定と権限を満たしても 3 リソースへの到達が成立しないと分かった場合の代替です。B17 の照合待ち、ログ未到着、モデルクォータ不足だけでは切り替えません。ネットワークを全許可にする復旧は行いません。
 
 1. C08 の対象別の失敗結果と切り分け内容を非公開に記録します。
 2. 元の account／project の利用を止めます。
-3. 4.3工程1と同じ Azure portal ウィザードを、新しい Foundry account 名で開きます。
+3. 4.3 工程 1 と同じ Azure portal ウィザードを、新しい Foundry account 名で開きます。
 4. 同じ専用 RG・Japan East・社内 CIDR・システム割り当て MI・Microsoft マネージド キーを設定します。
 5. [Storage] > [Agent service] では BYO の [Select Resources] を設定しません。
 6. Key Vault／Application Insights の未接続方針を維持します。
 7. [Review + create] で別 account であることを確認します。
 8. [Create] を選択します。
-9. 作成直後に工程1の PowerShell でキーを無効化します。
-10. 古いキーの401を確認してから工程5・6でモデルと prompt agent を新規作成します。
+9. 作成直後に工程 1 の PowerShell でキーを無効化します。
+10. 古いキーの 401 を確認してから工程 5・6 でモデルと prompt agent を新規作成します。
 11. account／project／agent の参照を新しい対象へ更新します。
 
 Basic setup では capability host を作りません。Learn の “Creating capability hosts isn't required” に従い、Microsoft 管理の保存先を使います。Standard と Basic を同じ account に混ぜないという推奨に従うため、元の account 内に Basic project を足す手順ではありません。
@@ -540,7 +540,7 @@ Basic setup では capability host を作りません。Learn の “Creating ca
 | 判定項目 | Basic へ分岐した場合 |
 |---|---|
 | C01 | Basic の応答結果と構成を記録。BYO host／接続の行は対象外の理由を明記し、Standard の成功へ読み替えない |
-| C08 | 人の入口の許可／拒否は継続。Standard の3リソース到達の失敗を残し、Basic の BYO 行は対象外として別記。全体を無条件 Pass にしない |
+| C08 | 人の入口の許可／拒否は継続。Standard の 3 リソース到達の失敗を残し、Basic の BYO 行は対象外として別記。全体を無条件 Pass にしない |
 | 第3章のリソース | この章では削除しない。第7章のアプリ用 Cosmos は引き続き使用可能。残存費用を記録 |
 | 後続章 | 第5章以降は新 account／project／agent を対象にする。Agent Service の自前保存を確認したとは書かない |
 
@@ -548,7 +548,7 @@ Basic setup では capability host を作りません。Learn の “Creating ca
 
 ## 4.6. 次の操作
 
-Standard は4.4の完了条件を満たして第5章へ進みます。Basic に分岐した場合は4.5の対象外・失敗の記録を残し、Basic の応答と人の入口の制限、キー無効化を確認して進みます。証拠不足の Pending を合格へ変更しません。C08 のツール部分は第7・8章、本文監査 C05 は第6章の保留条件で別に扱います。
+Standard は 4.4 の完了条件を満たして第5章へ進みます。Basic に分岐した場合は 4.5 の対象外・失敗の記録を残し、Basic の応答と人の入口の制限、キー無効化を確認して進みます。証拠不足の Pending を合格へ変更しません。C08 のツール部分は第7・8章、本文監査 C05 は第6章の保留条件で別に扱います。
 
 ## 4.7. 費用
 
@@ -559,7 +559,7 @@ Standard は4.4の完了条件を満たして第5章へ進みます。Basic に�
 | 15 | gpt-5 mini / Global Standard 出力 | 10.800000 |
 | 16 | Content Safety / Standard テキストレコード | 7.500000 |
 
-2026-09-15 の見積り v3 の既定値です。Japan East、原則 32h/月の検証、CSPM は既定 OFF です。No.8 と No.12 は常時／検証日の切替で、二重計上しません。No.6 は 第1章/第6章の共通費です。見積り保証ではありません。
+2026-09-15 の見積り v3 の既定値です。Japan East、原則 32h/月の検証、CSPM は既定 OFF です。No.8 と No.12 は常時／検証日の切替で、二重計上しません。No.6 は第1章/第6章の共通費です。見積り保証ではありません。
 
 ## 4.8. 本番との差・IaC で再現する (任意)
 
