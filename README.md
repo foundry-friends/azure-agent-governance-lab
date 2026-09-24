@@ -12,9 +12,9 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 ## 全体構成図
 
-![今回作る構成：本人は App Service から Foundry を直接呼び、APIM はツール専用](Azure.png)
+![今回作る構成：本人は App Service から Foundry を直接呼び、APIM はツール専用、Fabric データエージェントは本人 ID で呼ぶ](Azure.png)
 
-> **Note** 現行手順の設計判断 D14〜D17 を反映した目標構成です。Azure の実機検証は未実施です。本人の呼び出しは App Service の送信 VNet 統合・サービス エンドポイント経由で Foundry に直接接続し、APIM はツール経路に限定します。アプリ専用の Cosmos DB 保存は Agent Service の保存領域と分離します。
+> **Note** 現行手順の設計判断 D14〜D18 を反映した目標構成です。Azure の実機検証は未実施です。本人の呼び出しは App Service の送信 VNet 統合・サービス エンドポイント経由で Foundry に直接接続し、APIM はツール経路に限定します。アプリ専用の Cosmos DB 保存は Agent Service の保存領域と分離します。
 
 > **補足** 第0〜10章を一つの環境で順番に進めます。Standard setup の成立は初回検証で確認し、成立しなければ別 account の Basic setup に分岐します。Cosmos 接続と Fabric ツールに限定した Preview の例外を採用し、Application Insights の新規作成・本文トレースは保留します。Key Vault は独立した RBAC・監査の検証対象です。
 
@@ -52,7 +52,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 各章では番号に短い説明を添えます。番号を覚えてから作業を始める必要はありません。
 
-> **Note** Azure.png は D14〜D17 の既存図です。D18 の本編 Fabric 経路は下の Mermaid を参照します。画像への反映は未実施です。
+> **Note** Azure.png の ⑤ は D18 の Fabric ツール経路です（本人 ID〈OBO〉・APIM を通らない）。Foundry User の要否と到達は第8章 C11 で確認します。
 
 ## 今回作る環境
 
