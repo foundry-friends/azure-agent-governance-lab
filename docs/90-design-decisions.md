@@ -1,4 +1,4 @@
-# 設計判断 D1〜D17
+# 設計判断 D1〜D18
 
 通常手順ではなく設計の参考資料です。実行順は [README](../README.md) が正です。
 
@@ -23,6 +23,7 @@
 | D15 | G1〜G3 の根拠確認と例外（2026-09-19・A10〜A13）。主線 Standard、G2 が初回で成立しなければ別 account の Basic | Cosmos 接続だけ Preview を承認。Cosmos の `0.0.0.0` は Azure 内許可でトークン必須、インターネット全公開ではないとして採用。GUI にないキー無効化は Cloud Shell を許可し、Foundry は作成直後 PowerShell → 古いキー401 → モデル配置。到達は C08 で確定 | Cosmos 接続の SLA なし・本番非推奨を受け入れた学習用例外。他の Preview へ拡張しない。本番は GA 範囲と許可主体・経路を再評価 |
 | D16 | アプリ → Cosmos DB に JSON の会話メモを保存（2026-09-19・A14） | App Service 統合サブネットに `Microsoft.AzureCosmosDB` を追加し Cosmos VNet 規則で許可。システム割り当て MI のデータロールをアプリ専用 `<app-db>/<app-container>` に限定。`enterprise_memory` に書かない。GA の経路で Basic 分岐後も独立して使える | 利用者ごとのアプリ認可・保持・消去・容量を本番要件で設計。共有 MI の成功を本人の Foundry RBAC の証拠にしない |
 | D17 | 本人トークンは Easy Auth 転送、Foundry は REST（httpx）で 1 往復、Cosmos は MI、Python 3.12 と直接依存 5 つの固定版・Oryx ビルド、CSRF・拒否層の区別（2026-09-20・D-A1〜D-A6） | Easy Auth のトークン ストアを使い API 公開・MSAL・シークレット管理を増やさない。既存エージェントの REST は Bearer と input だけで呼べ、SDK 用の資格情報ラッパーや conversation が不要。Cosmos はキー無し MI の公式経路、ソース ZIP と Oryx で配布 PC の Python を不要にする。Consumer は第5章の project スコープを維持 | OBO／MSAL、トークンの署名検証、多インスタンス時の重複検知の外部化を再評価する |
+| D18 | Fabric データエージェントを本編のツールに採用（2026-09-24・依頼者決定）。Preview 例外・OBO・APIM を通らない別経路 | 本人 ID が Foundry → Fabric まで届き、利用者の権限で見えるデータが変わることを C11 で体験します。第7章で準備・公開・接続、第8章で比較。容量は事前確認済みのものを使用 | `fabric_dataagent_preview` に限定した2つ目の Preview 例外。SLA なし・本番非推奨。権限・ネットワーク・監査・費用・提供条件を本番では再評価 |
 
 
 Standard setup の前提は RG の Owner または User Access Administrator（別途リソース作成権限が必要）です。Cosmos DB の Provisioned には 3000 RU/s 以上の要件を確認します。Serverless も検証対象です。Serverless に Provisioned の RU/s パラメータをそのまま設定しません。04_data.bicep は EnableServerless を設定します。実機での適合性は要確認です。capability host は作成後に変更できません。[Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)
@@ -63,7 +64,21 @@ G1〜G3 は根拠を確認済みで、Azure 実行済みという意味ではあ
 
 A13 の設定値とデータ面の反映は別です。キーの値を取得・記録せず、既存の安全な試験経路で古いキーの401を確認します。経路がなければ C03 の実キー行は Pending、モデル配置前で保留します。B17（ウィザードの自動作成範囲）と B18（Storage の作成時キー項目）は初回照合です。`infra/` の旧停止点は変更しません。
 
+## D18 の適用範囲と D14・D17 との関係
+
+D1〜D17 の既存判断は維持します。D15 の Cosmos 接続とは別に、D18 で Fabric ツール `fabric_dataagent_preview` の採用を承認しました。他の Preview 機能・IaC API に例外を拡張しません。Fabric は Azure サブスクリプション外の SaaS として図示し、容量の契約・課金先は別に照合します。
+
+D14 の本人経路は App Service → Foundry、MCP／OpenAPI のツール経路は APIM のままです。Fabric は Foundry 組み込みツールとして APIM を通らない例外経路とし、APIM quota・ログの統制対象には含めません。D17 の Easy Auth 転送と、Foundry → Fabric の identity passthrough（OBO）は異なる区間です。アプリに OBO／MSAL を実装済みと読み替えません。サービス プリンシパル認証で代用しません。
+
+> **Note** 要確認: Learn は Foundry User 以上を要求します。Consumer のまま試行して結果を記録し、必要時だけ Fabric 専用主体に Foundry User を付与して比較します。C02 の呼び出し専用主体を昇格させません。D17 の既存アプリで OBO が成立するか、ツール呼び出し・拒否層・本人を追跡できるかは C11 で確認します。
+
+> **Note** 要確認（推測）: Foundry → Fabric の送信は Foundry 入口の IP 制限と直接衝突しない見込みですが、Fabric 側のネットワーク制限・到達を実機で確認します。容量・ライセンス・テナント設定・監査の条件は未確定のまま記録し、容量作成・停止・削除は本手順の対象外とします。
+
+
 ### 出典
+
+- 出典: [Foundry の Fabric ツール](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/fabric)（取得日 2026-09-24）
+- 出典: [Fabric から Foundry で利用する](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-foundry)（取得日 2026-09-24）
 
 - 出典: [Foundry 作成ウィザード](https://learn.microsoft.com/en-us/azure/ai-services/multi-service-resource)（取得日 2026-09-19）
 - 出典: [接続の種類](https://learn.microsoft.com/en-us/azure/foundry/how-to/connections-add)（取得日 2026-09-19）

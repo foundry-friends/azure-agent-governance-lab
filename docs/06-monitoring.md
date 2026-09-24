@@ -280,6 +280,16 @@ LAW が検索一覧に見えないことだけでは拒否の証明になりま�
 
 0 件という結果だけでは閲覧拒否の証明になりません。権限エラー、照会スコープ、継承されたロール、既存の条件付きアクセスによるサインイン拒否を区別します。この確認を行っても、本文の保護・閲覧拒否を試した C05 の合格とはしません。
 
+### Fabric 経路で追跡する範囲を整理する
+
+第7章で追加する Fabric ツールは D18 の別経路です。APIM のログや quota で Fabric 呼び出しを確認したとは扱いません。
+
+1. 第8章 C11 の記録に、App Service の要求時刻・利用者の別名・対象エージェントの版を残す欄を用意します。
+2. Foundry 側で確認できるツール名・呼び出し結果・相関情報を実機で確認する項目として残します。
+3. Fabric 管理担当者に、Fabric 側の監査の取得方法・閲覧権限・保持・本人の識別可否を確認します。
+
+> **Note** 要確認: Foundry 側で `fabric_dataagent_preview` の呼び出しがどの画面・ログ項目に出るか、Fabric 側まで本人 ID と要求を突き合わせられるかは C11 の初回で照合します。ログがないだけで未呼び出し・拒否と断定しません。本文トレースの C05 保留は維持し、監査を補うために別の Preview 機能を有効化しません。
+
 ## 6.4. 完了条件
 
 | 確認 | この章で残す結果 |
@@ -324,6 +334,8 @@ bash scripts/verify.sh --section 6
 
 ## 6.7. 費用
 
+Fabric 容量の費用は既存見積りに含まれません。事前確認済みの容量を使い、利用可否・費用負担・期間は課長判断とします。金額は要見積りです。
+
 | Excel v3 明細 No | 項目 | 通常月 USD |
 |---|---|---:|
 | 6 | Log Analytics / Analytics Logs 取り込み | 10.020000 |
@@ -337,6 +349,9 @@ bash scripts/verify.sh --section 6
 保持・マスキング・監査担当の職務分離は本番要件に合わせます。[付録 B](92-appendix-production-diff.md) を参照します。
 
 ### 出典
+
+- 出典: [Foundry の Fabric ツール](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/fabric)（取得日 2026-09-24）
+- 出典: [Fabric から Foundry で利用する](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-foundry)（取得日 2026-09-24）
 
 - 出典: [Log Analytics のクエリ操作](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/log-analytics-tutorial)（取得日 2026-09-20）
 

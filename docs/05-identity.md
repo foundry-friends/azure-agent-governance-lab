@@ -281,6 +281,26 @@ Cosmos DB Operator だけではデータアクセスを確認できません。�
 
 第7章で用意するアプリは、利用者本人の権限を Foundry 側で検証できる必要があります。全員の呼び出しを共通のアプリ MI に置き換えた経路では、今回のユーザー別 RBAC の効果を判定できません。
 
+### 8. Fabric の比較に使う主体と権限を分ける
+
+既存の呼び出し用ユーザーは **Foundry Agent Consumer** のままとします。C02 の合格条件は変更しません。Fabric 専用の試験主体を別に用意し、C02 用ユーザーへ Foundry User を追加しません。
+
+| 主体・用途 | Foundry project | Fabric データエージェント | 元データ |
+|---|---|---|---|
+| C02 の呼び出し専用 | Foundry Agent Consumer | 本試験で追加しない | 本試験で追加しない |
+| Fabric 許可グループ `<fabric-allowed-group>` | まず Foundry Agent Consumer。Foundry User の要否は C11 で要確認 | 第7章で READ | 第7章でレイクハウス Read。テーブルへのアクセス制御がある場合は対象表の読取権限も確認 |
+| Fabric 拒否グループ `<fabric-denied-group>` | 許可グループと同一の Foundry ロールで比較 | 付与しない | 付与しない |
+| 開発用ユーザー | Foundry User。接続作成権限は実効権限を照合 | 作成・公開・共有に必要な権限を別途確認 | 合成データの作成・読取・共有に必要な権限を別途確認 |
+| RLS 拡張の利用者 (任意) | 主線の比較で確定したロール | READ | セマンティック モデル Read と部署別 RLS。CLS も引き続き適用 |
+
+1. 管理担当者に、Fabric 試験専用の2グループとそれぞれの試験ユーザーを確認します。
+2. 各主体に上位スコープやグループから開発権限・Fabric 権限が混入しないことを確認します。
+3. Fabric 試験主体へ、5.3 工程5と同じ方法で対象 project の Foundry Agent Consumer を割り当てます。
+4. C11 で必要になった場合に限る Foundry User の追加先・範囲・復帰方法を管理担当者に確認します。
+5. 比較用の割当前の状態を非公開で記録します。
+
+> **Note** 要確認: Learn は開発者・利用者に最低 Foundry User（旧 Azure AI User）を要求しています。Consumer で Fabric ツールを呼べるかは未検証です。Consumer の試行→結果記録→Fabric 専用主体のみ Foundry User を追加して比較する順とし、全員への一括付与は行いません。Fabric の READ と元データ Read は別の権限です。未作成の Fabric 資産への割当は第7章で行います。
+
 ## 5.4. 完了条件
 
 - 開発用ユーザーの project の Foundry User と account の Reader を確認できる。
@@ -329,6 +349,8 @@ az role assignment delete --ids "<mistaken-assignment-resource-id>"
 
 ## 5.7. 費用
 
+Fabric 容量の費用は既存見積りに含まれません。事前確認済みの容量を使い、利用可否・費用負担・期間は課長判断とします。金額は要見積りです。
+
 基本の Managed Identity・RBAC は既存見積りの No.9 です。新しいライセンスを追加する手順ではありません。作業中も既存リソースの料金は継続するため、環境全体の費用は README の見積りと実績で確認します。
 
 ## 5.8. 本番との差
@@ -336,6 +358,9 @@ az role assignment delete --ids "<mistaken-assignment-resource-id>"
 このラボでは専用ユーザーへの割当で役割の違いを学びます。本番では所属変更・退職・サービス廃止時の権限回収、職務分離、権限の定期点検を設計します。既存の条件付きアクセスは変更しません。IaC の固定停止点も維持し、権限表を確認しただけでテンプレートを再展開しません。
 
 ### 出典
+
+- 出典: [Foundry の Fabric ツール](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/fabric)（取得日 2026-09-24）
+- 出典: [Fabric から Foundry で利用する](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-foundry)（取得日 2026-09-24）
 
 - 出典: [Cloud Shell の対象確認（az account show）](https://learn.microsoft.com/en-us/cli/azure/account?view=azure-cli-latest#az-account-show)（取得日 2026-09-20）
 

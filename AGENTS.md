@@ -5,7 +5,7 @@
 ## 1. このリポジトリは何か
 
 - 部内の SE が、部門で共有する Azure 検証環境に「ガバナンス付きエージェント環境（Microsoft Foundry・構成 A・Agent 365 なし）」を再現するための手順集。
-- **前提（変更しない）**: 閉域接続なし（Private Endpoint・VNet injection・VPN・Firewall・Bastion を使わない）／インターネット全公開はしない（人の入口は社内 IP の許可リスト。D14 により App Service の送信 VNet 統合＋サービス エンドポイントを許可し、Foundry は社内 IP＋統合サブネットの VNet 規則。ツール用 APIM はネットワーク上は公開し、Entra トークンのテナント・audience・許可主体で制限する。全 API に社内 IP のみの規則を継承させない。Entra 条件付きアクセスは既存設定で変更しない）／アウトバウンドは最低限（公開ツール不使用、MCP / OpenAPI は APIM 経由の許可リストのみ）／WAF なし／**Preview 機能の手順は載せない（唯一の例外は第4章の Azure Cosmos DB 接続・依頼者承認 2026-09-19）**／prompt agent（ノーコード）が主線、hosted agent は付録／データ基盤は BYO（GUI で目標 SKU＋IP 制限＋ローカル認証無効を設定し、作成済みの ID を接続に使う。Bicep は任意。設計判断 D12）。
+- **前提（変更しない）**: 閉域接続なし（Private Endpoint・VNet injection・VPN・Firewall・Bastion を使わない）／インターネット全公開はしない（人の入口は社内 IP の許可リスト。D14 により App Service の送信 VNet 統合＋サービス エンドポイントを許可し、Foundry は社内 IP＋統合サブネットの VNet 規則。ツール用 APIM はネットワーク上は公開し、Entra トークンのテナント・audience・許可主体で制限する。全 API に社内 IP のみの規則を継承させない。Entra 条件付きアクセスは既存設定で変更しない）／アウトバウンドは最低限（公開ツール不使用、MCP / OpenAPI は APIM 経由の許可リストのみ、Fabric 組み込みツールは D18 の別経路）／WAF なし／**Preview 機能の手順は載せない（例外は第4章の Azure Cosmos DB 接続（2026-09-19）と第7章の Fabric ツール `fabric_dataagent_preview`（D18・2026-09-24）に限定）**／prompt agent（ノーコード）が主線、hosted agent は付録／データ基盤は BYO（GUI で目標 SKU＋IP 制限＋ローカル認証無効を設定し、作成済みの ID を接続に使う。Bicep は任意。設計判断 D12）。
 - 全体像・セクション・Run・所要時間・費用は [README.md](README.md)。設計判断は [docs/90-design-decisions.md](docs/90-design-decisions.md)。検証項目は [checks/README.md](checks/README.md)。
 - **状態**: 骨組みとドラフト。**Azure は未実行**。この Mac では Azure に触れないため、正しさは**検証チームが実際に実行して確認する**（§4）。
 
@@ -58,7 +58,7 @@
 
 1. 状態行・工程に合う見出し・完了条件・出典・末尾ナビがある。READMEと前へ／次へが同じ一本道で、後の章への前提依存がない。
 2. 相対リンクが全部存在する（`python3` で `\[...\]\((相対パス)\)` を抽出して確認）。
-3. 「Phase」「閉域」「Private Endpoint」「Firewall」「WAF」「Managed VNet」「Preview」が、「使わないものと理由」「本番との差」「対象外」以外の文脈で残っていない（承認済みの Cosmos 接続の Preview 例外は明示して掲載可）。
+3. 「Phase」「閉域」「Private Endpoint」「Firewall」「WAF」「Managed VNet」「Preview」が、「使わないものと理由」「本番との差」「対象外」以外の文脈で残っていない（承認済みの Cosmos 接続と Fabric ツールの Preview 例外は明示して掲載可）。
 4. 実在 ID・接続文字列・キーのパターン（GUID、`AccountKey=`、`sig=` など）が無い。
 5. 手順の各コマンドに「実行結果の確認ポイント」がある。UI 手順は [角括弧] で 1 操作 1 文。
 6. Bicep を触ったら `bicep build` が通る（警告は列挙して依頼者に報告）。スクリプトを触ったら `bash -n` が通る。
@@ -76,7 +76,7 @@ CLI と Bicep の旧番号・モードは互換性のため維持しています
 
 - git の commit / push / branch 操作（依頼者が行う）。
 - `infra/vendor/` の改変、`.env`・`*.local.json`・`evidence/` のコミット対象化。
-- **例外: Azure Cosmos DB 接続（第4章・依頼者承認 2026-09-19）。** この例外は他の Preview 機能や IaC の Preview API に拡張しない。
+- **例外: Azure Cosmos DB 接続（第4章・2026-09-19）と Fabric ツール `fabric_dataagent_preview`（第7章・D18・2026-09-24）。** この例外は他の Preview 機能や IaC の Preview API に拡張しない。
 - 上記例外以外の Preview 機能の手順の追加（Managed VNet、エージェント guardrails の Preview 介入点、Tool call 介入、Task Adherence、AI Gateway 統合の Preview 部分）。「GA 後に追記」と注記して止める。
 - 確認項目 C01〜C10 の番号の変更。章の再編は依頼者の明示指示がある場合だけ行い、関連リンクを一括更新。
 - Azure を実行したように書くこと。出典の無い画面名・パラメータ名の断定。

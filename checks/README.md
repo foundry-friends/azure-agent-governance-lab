@@ -1,4 +1,4 @@
-# 「統制が効いている」検証項目（10 個）
+# 「統制が効いている」検証項目（11 個）
 
 まだ実機検証していません。初期状態は全件 Pending です。設定の存在と効果を分け、期待結果を確認できた場合だけ Pass、期待に反した場合は Fail、未実施・判断不能は Pending と記録します。
 
@@ -14,6 +14,10 @@
 | C08 | ネットワーク境界・送信 | 初回接続・統制試験 | 第4・8章 | 初回接続: 許可 IP から成功（ブラウザ）・許可外 IP から拒否（Cloud Shell）を同等権限で確認。IP 制限下の Agent Service → Cosmos／Storage／Search 到達を第4章の応答確認＋Cosmos のコンテナー生成・Storage／Search の診断ログで確認。ゲートウェイ構築後: 未許可 MCP と APIM 経由の許可先を比較 | 許可 IP は成功、許可外 IP はリソース側で拒否、agent service は IP 制限下で到達。未許可 MCP は失敗、APIM 経由の許可先は成功。公開範囲を緩める復旧は行わず、未解決なら Pending |
 | C09 | ツール Gateway・ガードレール | ガードレール・統制試験 | 第4・8章 | ツール用 APIM の経由ログ・呼び出し quota と、Foundry の正常／拒否入力・RAI 適用を別々に確認 | quota の対象・集計キー・期間・上限・ポリシーは第7章で確定するまで Pending。本人経路・内部モデルのトークン quota を検証したとはしない。Preview は対象外 |
 | C10 | コスト・ライフサイクル | 予算・後片付け | 第1・10章 | 予算通知設定、RG 削除、soft-delete、RG 外、Defender プラン、削除後の費用を確認 | RG 消失だけで完了にせず、残存と課金を確認。予算通知をハードリミットと扱わない |
+| C11 | 本人 ID・Fabric | 統制試験 | 第8章（事前確認は第0章、主体準備は第5章、監査確認は第6章、設定は第7章） | Fabric データエージェント（本人 ID の受け渡し）。App Service から同じ質問で許可／拒否と Consumer／Foundry User を比較 | 許可側の集計成功、同等の Foundry ロールの拒否側で Fabric 拒否、本人経路の根拠、ロール比較の結論と復帰が揃えば Pass。無権限で取得・共有 ID 実行・原因特定済みの正常系不成立は Fail。未実施・原因不明・証跡不足・ロール未確定は Pending |
+
+C11 は本編です。初期状態は Pending とし、C01〜C10 の番号・合格条件を変更しません。Consumer の呼び出し専用設計と C02 用主体を維持し、必要時だけ Fabric 専用主体に Foundry User を追加して比較します。Playground の成功を本人経路の成功としません。Fabric は D18 の APIM を通らない別経路で、C09 の Preview 対象外は C09 の範囲に維持します。C11 だけが Fabric ツールの限定 Preview 例外です。RLS 等の任意拡張は主線と別に結果を記録します。
+
 
 D14 により C02／C03 は App Service → Foundry の本人経路で確認します。C08 は人の入口の IP 制限、App Service → Foundry の VNet 規則、Agent Service → データ基盤、ツール用 APIM の許可主体・許可先を分けます。APIM の ID による拒否を IP 制限の成功と読み替えません。
 
@@ -75,6 +79,8 @@ Entra のサインイン拒否だけではリソース側のネットワーク�
 対象未作成は台帳を根拠に対象外とし、不明と区別します。全行を確認するまで C10 全体を Pass にしません。C10 の Pass は請求書の確定でも、C01〜C09 の未実施試験の合格でもありません。詳細と根拠は[第10章](../docs/10-cleanup-cost.md)を参照します。
 
 ### 出典
+
+- 出典: [Foundry の Fabric ツールと必要権限](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/fabric)（取得日 2026-09-24）
 
 - 出典: [Foundry のキー無効化と401確認](https://learn.microsoft.com/en-us/azure/ai-services/disable-local-auth)（取得日 2026-09-19）
 - 出典: [Standard setup の確認](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-19）

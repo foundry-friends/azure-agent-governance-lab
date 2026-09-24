@@ -1,6 +1,6 @@
 # Azure でガバナンス付きエージェント環境を作る
 
-Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監視・ゲートウェイ・Policy の統制を順に体験するハンズオンです。Azure 内で完結する構成 A（Agent 365 なし）を扱います。
+Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監視・ゲートウェイ・Policy の統制を順に体験するハンズオンです。Azure と Microsoft Fabric を使う構成 A（Agent 365 なし）を扱います。
 
 > [!IMPORTANT]
 > **第0章から第10章まで、下の順番で進みます。** 各ページ末尾の「次へ」をたどれば、通常手順で前の章へ戻る必要はありません。同じ環境に機能と統制を追加し、削除は最後に一度だけ行います。
@@ -16,7 +16,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 > **Note** 現行手順の設計判断 D14〜D17 を反映した目標構成です。Azure の実機検証は未実施です。本人の呼び出しは App Service の送信 VNet 統合・サービス エンドポイント経由で Foundry に直接接続し、APIM はツール経路に限定します。アプリ専用の Cosmos DB 保存は Agent Service の保存領域と分離します。
 
-> **補足** 第0〜10章を一つの環境で順番に進めます。Standard setup の成立は初回検証で確認し、成立しなければ別 account の Basic setup に分岐します。Cosmos 接続のみ Preview の例外を採用し、Application Insights の新規作成・本文トレースは保留します。Key Vault は独立した RBAC・監査の検証対象です。
+> **補足** 第0〜10章を一つの環境で順番に進めます。Standard setup の成立は初回検証で確認し、成立しなければ別 account の Basic setup に分岐します。Cosmos 接続と Fabric ツールに限定した Preview の例外を採用し、Application Insights の新規作成・本文トレースは保留します。Key Vault は独立した RBAC・監査の検証対象です。
 
 > **補足** Azure CLI／Bicep は原則 Cloud Shell 上の確認・任意の再現用（第7章の ZIP 配布とその認証・対象確認のみ社内 PC の CLI を使う暫定例外）です。Key Vault に実際のキーや接続文字列は保存しません。
 
@@ -24,17 +24,17 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 | 章 | 手順 | この章でできること | 執筆状況（すべて実機未検証） |
 |---|---|---|---|
-| 0 | [Azure 環境の事前確認](docs/00-before-start.md) | 対象・予算・IP・試験ユーザーを決める | 手順ドラフト |
+| 0 | [Azure 環境の事前確認](docs/00-before-start.md) | 対象・予算・IP・試験ユーザーと Fabric の前提を確認する | 手順ドラフト |
 | 1 | [準備と土台](docs/01-prerequisites.md) | RG・予算・Log Analytics ができる | 手順ドラフト |
 | 2 | [Key Vault を準備する](docs/02-key-vault.md) | 監査用 Key Vault ができる | 手順ドラフト |
 | 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | サービス到達設定と作成時／直後のキー無効化を反映。Storage の B18 は初回照合・未実行 |
 | 4 | [Foundry とエージェントを作る](docs/04-foundry-agent.md) | 同じデータ基盤を使うエージェントが応答する | G1〜G3 の根拠確認済み。GUI 作成→キー無効化→401→モデル配置。到達は C08 初回で確定、成立しなければ Basic |
-| 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分ける | 操作ドラフト・Consumer は Cloud Shell 代替・第4章完了後に実行 |
+| 5 | [人とサービスの権限を設定する](docs/05-identity.md) | 人とサービスの権限を分け、Fabric 用の比較主体を準備する | 操作ドラフト・Consumer は Cloud Shell 代替・第4章完了後に実行 |
 | 6 | [監視と監査を設定する](docs/06-monitoring.md) | 操作・本文の証跡を準備する | 操作ドラフト・本文のEntra取り込み／保護はPreviewのため保留 |
-| 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者がブラウザから呼べる入口を作る | 案 C＋アプリ実装済み（Easy Auth 転送・REST・Cosmos JSON 保存）。社内 PC の CLI 配布は暫定採用。本人トークン取得・配布・到達は初回実行で確認 |
-| 8 | [権限・認証・ネットワークの統制を試す](docs/08-governance-tests.md) | 許可／拒否・IP・quota を比較する | 操作ドラフト・判定／証跡／復旧を具体化・実行は第7章の完成待ち |
+| 7 | [ゲートウェイと呼び出しアプリを用意する](docs/07-gateway-app.md) | 利用者本人の入口を作り、Fabric の準備・公開・ツール追加を行う | 案 C＋アプリ実装済み（Easy Auth 転送・REST・Cosmos JSON 保存）。社内 PC の CLI 配布は暫定採用。本人トークン取得・配布・到達は初回実行で確認 |
+| 8 | [権限・認証・ネットワークの統制を試す](docs/08-governance-tests.md) | 許可／拒否・IP・quota と Fabric の本人 ID・権限差を比較する | 操作ドラフト・判定／証跡／復旧を具体化・実行は第7章の完成待ち |
 | 9 | [Policy・脅威検知・評価を試す](docs/09-policy-defender-eval.md) | Audit → Deny、検知・評価を体験する | GUI操作・判定ドラフト済み。Policyの安全な拒否試験／モデル制限／AI実検知／自動評価の到達は保留 |
-| 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | 最後に環境を削除し残存・費用を確認する | GUI操作・残存／費用判定ドラフト済み。削除・完全削除・課金の実機確認は未実施 |
+| 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | Azure と Fabric の専用資産を削除し、残存・費用を確認する | GUI操作・残存／費用判定ドラフト済み。削除・完全削除・課金の実機確認は未実施 |
 
 **開始: [第0章・Azure 環境の事前確認](docs/00-before-start.md)**
 
@@ -47,10 +47,12 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 表記 | 意味 | 定義場所 |
 |---|---|---|
 | G1〜G3 | 接続の提供範囲・サービス間通信・作成時認証の管理番号。2026-09-19 に根拠と方針を確定。到達は C08 | [第4章の確認根拠](docs/04-foundry-agent.md#作成前に確認した根拠) |
-| C01〜C10 | 初回接続・権限・監査など、結果を判定する検証項目 | [検証項目の一覧](checks/README.md) |
+| C01〜C11 | 初回接続・権限・監査など、結果を判定する検証項目 | [検証項目の一覧](checks/README.md) |
 | D1〜D16 | 構成を選んだ理由を記録した設計判断 | [設計判断の一覧](docs/90-design-decisions.md) |
 
 各章では番号に短い説明を添えます。番号を覚えてから作業を始める必要はありません。
+
+> **Note** Azure.png は D14〜D17 の既存図です。D18 の本編 Fabric 経路は下の Mermaid を参照します。画像への反映は未実施です。
 
 ## 今回作る環境
 
@@ -63,6 +65,7 @@ flowchart LR
   F --> D[Storage / Cosmos DB / AI Search]
   F --> G[ツール用 APIM Basic v2: Entra で許可主体を検証]
   G --> T[許可済みツール]
+  F -->|本人 ID OBO・APIM を通らない| FB[Microsoft Fabric データエージェント: Azure サブスクリプション外の SaaS]
   F --> M[監視・監査]
   G --> M
   K[Key Vault: 独立した RBAC・監査検証] --> M
@@ -74,13 +77,13 @@ flowchart LR
 
 ## 守る前提
 
-- **作成・変更は Azure portal の GUI**。Cloud Shell（原則 Bash）は確認と GUI に無い操作の代替用です。Foundry account のキー無効化と直後の確認だけは PowerShell を使います（A13）。第7章のZIP配布だけは、LinuxのGUI非対応とSCMの社内IP制限のため、社内PCのAzure CLIを暫定採用します。理由と範囲は第7章に記載しています。
+- **作成・変更は Azure／Foundry／Fabric ポータルの GUI**。Cloud Shell（原則 Bash）は確認と GUI に無い操作の代替用です。Foundry account のキー無効化と直後の確認だけは PowerShell を使います（A13）。第7章のZIP配布だけは、LinuxのGUI非対応とSCMの社内IP制限のため、社内PCのAzure CLIを暫定採用します。理由と範囲は第7章に記載しています。
 - 専用 RG を実施者ごとに分けます。既存の部門リソースを変更しません。
 - 人の入口は社内 IP、認証は Entra ID。App Service → Foundry／アプリ専用 Cosmos は送信 VNet 統合＋サービス エンドポイントを使います。Agent Service 用には Search の信頼サービス例外・Storage のリソース インスタンス規則・Cosmos の `0.0.0.0` を採用します（D15）。
-- ツール用 APIM はネットワーク上は公開し、Entra の許可主体で制限します。本人の呼び出しは APIM を通らず、モデルのトークン量・費用全体を APIM で制限したとは扱いません。
+- ツール用 APIM はネットワーク上は公開し、Entra の許可主体で制限します。本人の呼び出しと D18 の Fabric ツールは APIM を通らず、モデルのトークン量・費用全体を APIM で制限したとは扱いません。
 - 最初のエージェントはツールなし。ゲートウェイを用意した後、許可先だけ追加します。
 - 既存の Entra 条件付きアクセスは変更しません。
-- **Preview の唯一の例外は Azure Cosmos DB 接続（第4章・2026-09-19 承認）**です。SLA なし・本番非推奨を明示して NoSQL の体験を優先します。アプリ → Cosmos はこの例外に依存しない GA の経路です。
+- **Preview の例外は Azure Cosmos DB 接続（第4章・2026-09-19 承認）と Fabric ツール `fabric_dataagent_preview`（第7章・D18・2026-09-24 承認）に限定**です。SLA なし・本番非推奨を明示し、NoSQL と本人 ID によるデータ権限制御を体験します。アプリ → Cosmos はこの例外に依存しない GA の経路です。
 - App Service の送信 VNet 統合は対象です。Agent 365、Private Endpoint、VNet injection、VPN、Firewall、Bastion、NAT Gateway、WAF、上記例外以外の Preview 機能の操作は対象外です。
 - Defender CSPM は既定 OFF。共有サブスクリプションへの変更は管理者判断です。
 - API キー・トークン・実 ID・社内 IP・実名はリポジトリに保存しません。`.env`・`*.local.json`・`evidence/` は公開対象外です。
@@ -89,7 +92,7 @@ flowchart LR
 
 チームで使う [Issue記録ガイド・記載例](docs/ISSUE_RECORDING_GUIDE.md) と [非公開の証跡テンプレート](checks/evidence_template.md) を用意しています。定例中は全員が共有Excelへ記録します。手順修正や計画見直しが必要な課題をGitHub Issueへ転記し、以後はIssueを正本として皆でクローズまで管理します。ExcelにはIssueリンクと「GitHubで管理」を残します。Excel の配布先・証跡置き場・取りまとめ担当は検証チーム内で案内します。
 
-[確認項目 C01〜C10](checks/README.md) は番号を維持し、実施する章だけを整理しました。設定の存在・動作成功・拒否・未実施を区別します。記録は非公開の `evidence/` に残し、未実施は Pending とします。
+[確認項目 C01〜C11](checks/README.md) は番号を維持し、実施する章だけを整理しました。設定の存在・動作成功・拒否・未実施を区別します。記録は非公開の `evidence/` に残し、未実施は Pending とします。
 
 一つの体験を終えるまで同じ RG を使います。日をまたぐ場合は予算と保管期間を確認します。途中で中止する場合は [第10章](docs/10-cleanup-cost.md) で片付けます。削除後に再現したいときだけ、第0章から新しい一周を始めます。
 
@@ -98,6 +101,8 @@ flowchart LR
 旧計画の「Run 1／Run 2を別々に構築する」時間配分は、今回の一本道の所要時間として使いません。一周の所要時間は未計測です。アプリを追加した後の稼働時間と、日をまたぐ保管時間を含めて実績を記録します。
 
 ## 費用の目安
+
+> **Note** Fabric 容量は既存見積りの対象外です。事前確認済みの有料 F2 以上、または Fabric 有効の Power BI Premium P1 以上を使います。利用可否・費用負担・期間は課長に事前相談し、金額は要見積りとします。容量の作成・削除・停止は本手順に含めません。
 
 | 条件 | USD |
 |---|---:|

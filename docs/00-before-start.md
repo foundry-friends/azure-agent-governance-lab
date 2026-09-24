@@ -133,6 +133,25 @@
 
 > **Note** 要確認: 第4章では Cosmos DB 接続の Preview 例外と、BYO への接続設定の根拠を確認済みですが、実機の到達は未確認です。第3・4・7章に残る到達・認証の確認事項は各章の条件に従います。事前確認だけで「全章が通る」とせず、資料上の保留と自分の権限不足を区別して記録します。
 
+### Fabric の事前条件を確認する
+
+1. Fabric 管理担当者に、Foundry と同じテナントを使用することを確認します。
+2. 容量管理担当者に、事前確認済みの容量と検証用ワークスペースへの割り当て可否を確認します。
+3. 課長に、容量の利用可否・費用負担・利用期間を確認します。
+4. Fabric 管理担当者に、下表の利用条件を照合してもらいます。
+5. 未確定の条件と確認担当を非公開で記録します。
+
+| 項目 | 条件・確認時期 |
+|---|---|
+| テナントと容量 | 同一テナント。有料 F2 以上、または Fabric 有効の Power BI Premium P1 以上。第1章前に利用判断、第7章前に割り当てを確認 |
+| リージョン | データエージェントと元データの容量を同一リージョンに配置。第7章前に照合 |
+| テナント設定 | データエージェントの利用許可と、必要に応じた cross-geo 処理・保存の許可。第7章前に管理担当者が確認 |
+| 作成・共有 | ワークスペース、レイクハウス、データエージェントの作成・公開・共有権限。第7章前に確認 |
+| 試験ユーザー | Fabric 利用ライセンスの要否は要確認。容量 SKU と利用形態を Fabric 管理担当者が照合 |
+| Foundry のロール | 第5章の Consumer 設計を維持。Fabric 試験専用主体への Foundry User 付与可否を管理担当者に確認 |
+
+> **Note** 要確認: テナント設定の現在値・対象グループ・ライセンス要否を管理担当者が実環境で確認します。Fabric の前提が未確定なら第7章の Fabric 工程と C11 を Pending とします。容量の新規作成はこの手順では行いません。
+
 ## 0.4. 完了条件
 
 次の表の各行を「確認済み」または「保留」にします。保留には担当・期限・影響する工程を必ず添えます。
@@ -143,6 +162,7 @@
 | 費用と期間 | 月予算・通貨・通知先・終了予定日が合意済み | 有料リソースの作成を開始しない |
 | 社内接続 | 社内公開 IPv4 CIDR と既存のアクセス条件を確認済み | 条件に依存する作成・試験を停止 |
 | 試験ユーザーと許可外接続元 | 対応するユーザー・接続元を確認済み、または手配担当と期限を記録済み | C02／C08 の該当試験は Pending。構築とは分けて管理 |
+| Fabric | 容量・利用条件を確認済み、または第7章前の確認担当・期限を記録済み | 依存する Fabric 工程と C11 は Pending |
 | 検証判定 | 事前確認の完了と、C01〜C10 の試験合格を区別している | 未実施の試験を Pass にしない |
 
 ## 0.5. うまくいかない場合
@@ -162,13 +182,20 @@
 
 ## 0.7. 費用
 
+Fabric 容量の費用は既存見積りに含まれません。事前確認済みの容量を使い、利用可否・費用負担・期間は課長判断とします。金額は要見積りです。
+
 この章は確認のみです。既存契約の費用がゼロという意味ではありません。
 
 ## 0.8. 対象外
 
-第7章で App Service の送信 VNet 統合と従来型サービス エンドポイントを作ります。Private Endpoint・VNet injection・VPN・Azure Firewall・WAF・Bastion・NAT Gateway は作りません。Managed VNet と、第4章の承認済み Azure Cosmos DB 接続を除く Preview 機能の操作も対象外です。Cosmos DB 接続は学習目的の例外で、他の Preview 機能には広げません。本番との差は [付録 B](92-appendix-production-diff.md) にまとめます。
+第7章で App Service の送信 VNet 統合と従来型サービス エンドポイントを作ります。Private Endpoint・VNet injection・VPN・Azure Firewall・WAF・Bastion・NAT Gateway は作りません。Managed VNet と、第4章の承認済み Azure Cosmos DB 接続と第7章の Fabric ツール（D18）を除く Preview 機能の操作も対象外です。Cosmos DB 接続は学習目的の例外で、他の Preview 機能には広げません。本番との差は [付録 B](92-appendix-production-diff.md) にまとめます。
 
 ### 出典
+
+- 出典: [Fabric データエージェントのテナント設定](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-tenant-settings)（取得日 2026-09-24）
+
+- 出典: [Foundry の Fabric ツール](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/fabric)（取得日 2026-09-24）
+- 出典: [Fabric から Foundry で利用する](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-foundry)（取得日 2026-09-24）
 
 - 出典: [テナント ID を検索する](https://learn.microsoft.com/ja-jp/entra/fundamentals/how-to-find-tenant)（取得日 2026-09-20）
 - 出典: [Azure portal の設定](https://learn.microsoft.com/ja-jp/azure/azure-portal/set-preferences)（取得日 2026-09-20）

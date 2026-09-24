@@ -411,6 +411,8 @@ az resource show --ids "<search-resource-id>" --api-version 2025-05-01 --query '
 
 ## 3.7. 費用
 
+Fabric 容量の費用は既存見積りに含まれません。事前確認済みの容量を使い、利用可否・費用負担・期間は課長判断とします。金額は要見積りです。
+
 | Excel v3 明細 No | 項目 | 通常月 USD |
 |---|---|---:|
 | 2 | Azure Cosmos DB / サーバーレス RU | 0.285000 |

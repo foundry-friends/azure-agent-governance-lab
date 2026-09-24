@@ -78,7 +78,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 
 前へ: [準備](../docs/01-prerequisites.md) / 次へ: [データ基盤](../docs/03-data.md) / [トップに戻る](../README.md)
 
-## bicep build の状態（2026-09-15・Nia の Mac・Azure 未接続）
+## bicep build の状態（2026-09-15・舩渡のローカル環境・Azure 未接続）
 
 - Bicep CLI 0.47.16（Homebrew の公式 tap `azure/bicep`）。Azure CLI は未導入。
 - `bicep build infra/main.bicep` は **エラー 0・警告 1** で通過。警告は公式 41 の `modules-standard/add-project-capability-host.bicep` の `capabilityHostKind`（BCP037・型定義側の不足）で、vendor は改変しないため残す。
