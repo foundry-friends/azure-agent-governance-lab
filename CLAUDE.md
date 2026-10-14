@@ -9,7 +9,7 @@
 - AGENTS.md §8 の「git 操作をしない」は、部門 PC では次の範囲に限って解除する:
   develop から作業ブランチ（`fix/issue-<番号>`）を作る → commit → 作業ブランチを push → develop 向け PR を作る。
 - main・develop へ直接 push しない。マージ・rebase・強制 push・タグ・ブランチ削除をしない。PR のマージ、Issue のクローズ・編集は人が行う。
-- 作業対象は foundly-friends/azure-agent-governance-lab だけ。
+- 作業対象は foundry-friends/azure-agent-governance-lab だけ。
 - commit・push・PR 作成・Issue/PR へのコメントなど、GitHub に影響する操作は、実行の直前に「〇〇を実行してよいですか？」と内容を示して確認し、OK を得てから行う。OK は 1 操作ごと（前の OK を次の操作に使い回さない）。
 - 作業の流れ: Issue を読む → 修正方針と根拠（Issue の実行結果か Microsoft Learn）を出して止まる → 人の OK →
   修正 → 差分を見せて止まる → 人の OK → commit・PR（本文に `Refs #<番号>`。`Fixes`／`Closes` は使わない。Issue は翌週の再確認後に人が閉じる）。
@@ -21,6 +21,6 @@
 ## az コマンド（Azure CLI）
 - 検証を頼まれたときだけ実行する。手順書の修正のために自分から実行しない。
 - 実行の前に、次の 4 点を書いてから確認を求める: コマンド全文／目的／読み取りか変更か／対象のリソースグループ。
-- 変更系（create・update・delete・set・assign 等）は、依頼者の略号のリソースグループ（rg-agentgov-<略号>-run<N>）の中だけ。サブスクリプション全体に効く操作はしない。
+- 変更系（create・update・delete・set・assign 等）は、依頼者の略号のリソースグループ（rg-<略号>-dev-<連番>。命名は docs/00-before-start.md の 0.4）の中だけ。サブスクリプション全体に効く操作はしない。
 - 出力に含まれる ID・テナント・サブスクリプション・IP は、ファイル・Issue・PR・コミットに書かない。結果は「成功／失敗と確認ポイント」だけを書く。
 - 手順書のコマンドは Cloud Shell 前提。この PC の送信元は社内 IP なので、IP 制限の確認（C08 など）は結果が手順と変わることを先に伝える。
