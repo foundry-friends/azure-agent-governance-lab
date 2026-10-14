@@ -32,9 +32,9 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 
 | 対象 | 今回の設定 | 名前の入力例（置換必須） |
 |---|---|---|
-| Storage | 汎用 v2 / Standard LRS / Hot | `<storage-account-name>`（英小文字・数字、3〜24 文字） |
-| Cosmos DB | for NoSQL / Serverless / 単一リージョン | `<cosmos-account-name>` |
-| AI Search | Basic / レプリカ 1 / パーティション 1 | `<search-service-name>`（英小文字・数字・ハイフン、2〜60 文字） |
+| Storage | 汎用 v2 / Standard LRS / Hot | `st<略号>dev01`（以降の `<storage-account-name>`。英小文字・数字、3〜24 文字） |
+| Cosmos DB | for NoSQL / Serverless / 単一リージョン | `cosno-<略号>-dev-01`（以降の `<cosmos-account-name>`） |
+| AI Search | Basic / レプリカ 1 / パーティション 1 | `srch-<略号>-dev-01`（以降の `<search-service-name>`。英小文字・数字・ハイフン、2〜60 文字） |
 
 > **補足** 公開エンドポイントを有効にすることと、全 IP を許可することは別です。人の入口は社内 IP に制限し、Agent Service 用にはリソース別の例外を設定します。ネットワークの許可があっても、データ操作には別途 Entra ID の権限が必要です。Cloud Shell の送信元は社内 IP ではないため、ここでは管理面の設定確認だけに使います。
 
@@ -44,7 +44,7 @@ Foundry に渡す Storage・Cosmos DB・AI Search を、この順に作ります
 |---|---|
 | purpose | `agent-governance-lab` |
 | run | 今回の Run 番号（初回は `1`） |
-| operator | 自分の実施者略号 |
+| operator | 自分の検証者略号 |
 | deleteAfter | 第1章で決めた削除予定日（`YYYY-MM-DD`） |
 
 > **画面の見え方** 「第1章と同じタグ」は上表の 4 組です。RG のタグが各リソースに自動で付くとは考えず、作成画面または作成後の [タグ] で入力・確認します。

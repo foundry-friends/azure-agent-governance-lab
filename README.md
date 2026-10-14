@@ -24,7 +24,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 
 | 章 | 手順 | この章でできること | 執筆状況（すべて実機未検証） |
 |---|---|---|---|
-| 0 | [Azure 環境の事前確認](docs/00-before-start.md) | 対象・予算・IP・試験ユーザーと Fabric の前提を確認する | 手順ドラフト |
+| 0 | [Azure へのサインインと命名規則](docs/00-before-start.md) | サインイン・対象と自分のロールの照合・命名規則の決定を行う | 手順ドラフト |
 | 1 | [準備と土台](docs/01-prerequisites.md) | RG・予算・Log Analytics ができる | 手順ドラフト |
 | 2 | [Key Vault を準備する](docs/02-key-vault.md) | 監査用 Key Vault ができる | 手順ドラフト |
 | 3 | [データ基盤を作る](docs/03-data.md) | Storage・Cosmos DB・Search ができる | サービス到達設定と作成時／直後のキー無効化を反映。Storage の B18 は初回照合・未実行 |
@@ -36,7 +36,7 @@ Microsoft Foundry の prompt agent を作り、権限・ネットワーク・監
 | 9 | [Policy・脅威検知・評価を試す](docs/09-policy-defender-eval.md) | Audit → Deny、検知・評価を体験する | GUI操作・判定ドラフト済み。Policyの安全な拒否試験／モデル制限／AI実検知／自動評価の到達は保留 |
 | 10 | [削除と費用を確認する](docs/10-cleanup-cost.md) | Azure と Fabric の専用資産を削除し、残存・費用を確認する | GUI操作・残存／費用判定ドラフト済み。削除・完全削除・課金の実機確認は未実施 |
 
-**開始: [第0章・Azure 環境の事前確認](docs/00-before-start.md)**
+**開始: [第0章・Azure へのサインインと命名規則](docs/00-before-start.md)**
 
 途中章にある「確認」は、その時点で存在するものだけを対象にします。第5章では権限を設定し、第7章でアプリを用意した後、第8章で権限の効き方を試します。第5章へ戻って試験する必要はありません。
 

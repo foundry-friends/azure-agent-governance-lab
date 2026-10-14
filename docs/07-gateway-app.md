@@ -32,6 +32,24 @@ APIM（API Management）は API の認証や呼び出し制御をまとめるサ
 
 第4章の G1〜G3 の根拠と、選択した Standard／Basic の C01・C08 初回結果を記録し、同じエージェントの応答、第5章の権限設定、第6章の通常診断の設定を確認済みであることを前提とします。第6章で保留した本文監査は保留のまま引き継ぎます。
 
+### Fabric の事前条件を確認する
+
+1. Fabric 管理担当者に、Foundry と同じテナントを使用することを確認します。
+2. 容量管理担当者に、事前確認済みの容量と検証用ワークスペースへの割り当て可否を確認します。
+3. Fabric 管理担当者に、下表の利用条件を照合してもらいます。
+4. 未確定の条件と確認担当を非公開で記録します。
+
+| 項目 | 条件・確認時期 |
+|---|---|
+| テナントと容量 | 同一テナント。有料 F2 以上、または Fabric 有効の Power BI Premium P1 以上。工程11の開始前に利用可否と割り当てを確認 |
+| リージョン | データエージェントと元データの容量を同一リージョンに配置。工程11の開始前に照合 |
+| テナント設定 | データエージェントの利用許可と、必要に応じた cross-geo 処理・保存の許可。工程11の開始前に管理担当者が確認 |
+| 作成・共有 | ワークスペース、レイクハウス、データエージェントの作成・公開・共有権限。工程11の開始前に確認 |
+| 試験ユーザー | Fabric 利用ライセンスの要否は要確認。容量 SKU と利用形態を Fabric 管理担当者が照合 |
+| Foundry のロール | 第5章の Consumer 設計を維持。Fabric 試験専用主体への Foundry User 付与可否を管理担当者に確認 |
+
+> **Note** 要確認: テナント設定の現在値・対象グループ・ライセンス要否を管理担当者が実環境で確認します。Fabric の前提が未確定なら第7章の Fabric 工程と C11 を Pending とします。容量の新規作成はこの手順では行いません。
+
 ### 採用前の課題：通信の送信元を分ける
 
 ブラウザでアプリを開いた人の IP が、後段のサービス間通信でも使われるわけではありません。次の表は採用前の APIM 中継案の課題を示します。現行の経路は下の「採用した構成（案 C）」です。実測した結果ではありません。
@@ -124,10 +142,10 @@ Agent Service からツール用 APIM への経路は、上のどの案でも送
 |---|---|
 | サブスクリプション | 第1章の検証用 |
 | リソース グループ | 第1章の実施者専用 RG |
-| 名前 | `<今回のVNet名>` |
+| 名前 | `vnet-<略号>-dev-01` |
 | リージョン | Japan East。App Service と同一 |
 | IPv4 アドレス空間 | `<承認された専用CIDR>`。既存ネットワークとの重複を避ける |
-| サブネット名 | `<App Service専用の統合サブネット名>` |
+| サブネット名 | `snet-<略号>-dev-01` |
 | サブネットの大きさ | `/27` 以上。アドレス空間に収まる未使用範囲 |
 | サブネットの委任 | `Microsoft.Web/serverFarms` |
 | サービス エンドポイント | `Microsoft.CognitiveServices` と `Microsoft.AzureCosmosDB` |
@@ -164,12 +182,12 @@ az network vnet subnet show --resource-group '<専用RG名>' --vnet-name '<今�
 | 項目 | 値 |
 |---|---|
 | リソース グループ | 今回の専用 RG |
-| 名前 | `<今回のアプリ名>` |
+| 名前 | `app-<略号>-dev-01` |
 | 公開 | コード |
 | ランタイム スタック | Python 3.12（初回の選択可否は工程 6 で照合） |
 | オペレーティング システム | Linux |
 | 地域 | Japan East |
-| App Service プラン | 今回専用に作成。Linux B1 |
+| App Service プラン | `asp-<略号>-dev-01` を今回専用に作成。Linux B1 |
 | デプロイ | この時点ではソース連携・コード配置を行わない |
 | 監視 | 既存の監視資産を利用。追加作成の既定値を確認 |
 
@@ -311,7 +329,7 @@ az resource show --ids '<cosmos-resource-id>' --api-version 2024-11-15 --query '
 
 | 項目 | 値 |
 |---|---|
-| Database id | [Create new] で `<app-db>`。`enterprise_memory` とは別 |
+| Database id | [Create new] で `<app-db>`（例 `cosmos-<略号>-dev-01`）。`enterprise_memory` とは別 |
 | Container id | `<app-container>` |
 | Partition key | `/userId` |
 | 容量 | 既存 Serverless を維持。Provisioned の RU/s を設定しない |
@@ -358,7 +376,7 @@ Easy Auth 転送＋REST を採用します（D17・2026-09-20）。入口の署�
 
 | 項目 | 値 |
 |---|---|
-| [Name] | `<app-registration-name>`（今回の App Service 専用） |
+| [Name] | `appreg-<略号>-dev-01`（以降の `<app-registration-name>`。今回の App Service 専用） |
 | [Supported account type] | [Current tenant - Single tenant] |
 
 9. [Configure additional checks] の [Tenant requirement] を下表の値にします。
@@ -650,7 +668,7 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 | 項目 | 値 |
 |---|---|
 | RG／リージョン | 今回の専用 RG／Japan East |
-| リソース名 | `<今回のAPIM名>` |
+| リソース名 | `apim-<略号>-dev-01` |
 | 組織名／管理者メール | 承認済みの値を portal だけに入力 |
 | 価格レベル／単位 | Basic v2／1 |
 | 追加ネットワーク | APIM 自体を VNet 統合しない |
@@ -699,7 +717,7 @@ az webapp deploy --subscription '<対象サブスクリプションID>' --resour
 
 | 項目 | 値 |
 |---|---|
-| 診断設定名 | `gateway-to-law` |
+| 診断設定名 | `diag-<略号>-dev-01` |
 | ログ | ゲートウェイログ。表示カテゴリを照合 |
 | 宛先 | 第1章の既存 Log Analytics |
 | テーブル | リソース固有の `ApiManagementGatewayLogs` |
@@ -730,10 +748,10 @@ ApiManagementGatewayLogs
 
 > **Note** 状態: Fabric 工程はドラフト（Learn 2026-09 時点・未実行）。`fabric_dataagent_preview` は Cosmos 接続に続く2つ目の限定 Preview 例外です（D18）。SLA なし・本番非推奨の学習用として採用します。
 
-工程1〜10の後に、Fabric の準備から接続までを続けます。第3章の BYO データ基盤とは用途・管理境界が異なるため、本人経路ができた本章にまとめます。最初はツールなしで応答を確認し、ゲートウェイの準備後に許可した接続だけを追加する順序を維持します。
+[7.2 の事前条件](#fabric-の事前条件を確認する) を照合し、工程1〜10の後に、Fabric の準備から接続までを続けます。第3章の BYO データ基盤とは用途・管理境界が異なるため、本人経路ができた本章にまとめます。最初はツールなしで応答を確認し、ゲートウェイの準備後に許可した接続だけを追加する順序を維持します。
 
 1. 社内ブラウザで [Microsoft Fabric](https://app.fabric.microsoft.com/) を開きます。
-2. 第0章で確認したテナントの開発用ユーザーでサインインします。
+2. [第0章で照合したテナント](00-before-start.md#02-azure-portal-にサインインし対象を照合する) の、[第5章で選んだ開発用ユーザー](05-identity.md#試験ユーザーを決める) でサインインします。
 3. [ワークスペース]（[Workspaces]）を選択します。
 4. [新しいワークスペース]（[New workspace]）を選択します。
 5. 下表の名前を入力します。
@@ -745,7 +763,7 @@ ApiManagementGatewayLogs
 
 | 項目 | 値 |
 |---|---|
-| ワークスペース名 | `ws-agentgov-<実施者略号>-run<N>`。専用の検証領域 |
+| ワークスペース名 | `ws-<略号>-dev-<連番>`。専用の検証領域 |
 | 容量 | 事前確認済みの有料 F2 以上、または Fabric 有効の Power BI Premium P1 以上 |
 | テナント | Foundry project と同一 |
 | 配置 | データエージェントと元データの容量を同一リージョンに統一 |
@@ -888,7 +906,7 @@ D18 では Foundry 組み込みの Fabric ツールを **APIM を通らない例
 
 アプリは実装済みですが、本人トークンの取得・配布・到達・保存は初回実行で確認するまで未達として扱います。7.4 の完了条件を満たしてから第8章へ進みます。
 
-Fabric 工程の完了条件は、容量割り当て・合成4行・公開版・許可／拒否の共有設定・Foundry 接続・指示文・アプリの参照版を照合したことです。C11 の本人 ID と Consumer／Foundry User の差は第8章で試験するため、この章の設定完了を Pass としません。未確定なら Fabric 工程の保留理由を残し、C11 を Pending とします。
+Fabric 工程の完了条件は、[7.2 の利用条件](#fabric-の事前条件を確認する)・容量割り当て・合成4行・公開版・許可／拒否の共有設定・Foundry 接続・指示文・アプリの参照版を照合したことです。C11 の本人 ID と Consumer／Foundry User の差は第8章で試験するため、この章の設定完了を Pass としません。未確定なら Fabric 工程の保留理由・確認担当・期限を残し、依存する Fabric 工程と C11 を Pending とします。
 
 ## 7.5. うまくいかない場合
 
@@ -952,6 +970,7 @@ Fabric 容量の費用は既存見積りに含まれません。事前確認済�
 
 ### 出典
 
+- 出典: [Fabric データエージェントのテナント設定](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-tenant-settings)（取得日 2026-09-24）
 - 出典: [レイクハウスの共有](https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-sharing)（取得日 2026-09-24）
 
 - 出典: [CSV のレイクハウス読み込み](https://learn.microsoft.com/en-us/fabric/data-engineering/get-started-csv-upload)（取得日 2026-09-24）

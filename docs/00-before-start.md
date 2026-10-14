@@ -1,228 +1,182 @@
-# 0. Azure 環境の事前確認
+# 0. Azure へのサインインと命名規則
 
 進め方: README の第0〜10章を順番に実施します。この章から開始します。
 
-> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。操作手順の見直し日 2026-09-21。
+> **Note** 状態: ドラフト（Learn 2026-10 時点の記述に基づく・未実行）。操作手順の見直し日 2026-10-14。
 
-この章では、第1章以降で Azure を操作するために必要な値と権限を揃えます。チームの進め方・記録・課題管理はこのリポジトリの対象外とし、検証チーム内で別途決めます。
+前提は、Azure アカウントが払い出され、サインインできることと、検証の費用と期間は承認済みであることです。
 
 > **Note** 実 ID・社内 IP・認証情報を、この手順書やリポジトリへ書き込みません。
 
-> **補足** この章では環境を削除しません。通常の削除は最後の第10章です。中断して片付ける場合だけ、第10章へ進みます。
-
 ## 0.1. 目的
 
-第1章以降の構築に向けて、対象テナント・サブスクリプション、権限、予算、試験ユーザー、接続元を確認します。
+Azure portal の対象テナント・サブスクリプションと自分のロールを確認し、リソースの命名規則を揃えます。
 
 ### なぜこの作業が必要か
 
-部門で共有する環境では、作業者ごとに対象・権限・費用の範囲を決めておかないと、他の人のリソースを変更したり、想定外の範囲まで権限を付けたりするおそれがあります。また、「誰が、どの接続元から、何をできれば合格か」が決まっていないと、後で応答が返ってもガバナンスを確認したことにはなりません。
+共有サブスクリプションで他の人のリソースを触らないために、自分がどこに・どの権限で入っているかを確認します。RG を作る前に検証者ごとの名前を決め、第1章以降で自分のリソースを区別できるようにします。
 
-この章では、検証の範囲と比較に使うユーザー・接続元を揃えます。ここで決めた条件を、以後の構築と第8・9章の試験で共通の判断基準として使います。
-
-## 0.2. 始める前に揃える値
-
-| 項目 | 用意するもの |
-|---|---|
-| 検証対象 | 部門共有サブスクリプションと実施者専用 RG の命名 |
-| 費用と期間 | 月予算、通知先、終了予定日。既存見積りは参考値 |
-| 入口 | 許可する社内公開 IPv4 CIDR、許可外の試験接続元 |
-| ユーザー | 構築用・開発用・呼び出し用・無権限のテスト主体 |
-| モデル | Japan East の利用可否、登録、クォータを第1章で確認 |
-| Defender | CSPM は既定 OFF。サブスクリプション変更は管理者と合意 |
-
-| 確認先 | 具体的に確認する内容 | 残す結果 |
-|---|---|---|
-| 部門の Azure 管理担当 | 対象テナントとサブスクリプション、専用 RG の作成可否、ロール割当の実施者 | 対象の名称と ID、構築担当、自分でできない操作の依頼先 |
-| 上長・費用管理担当 | 月予算と通貨、通知先、終了日 | 合意額・通貨・通知先・終了予定日。見積りの数値だけで承認済みとしない |
-| ネットワーク担当 | 社内 PC から Azure へ出る公開 IPv4 CIDR、許可外試験の可否 | CIDR、試験接続元、利用条件 |
-| Entra 管理担当 | 試験ユーザー、既存の条件付きアクセス、MFA・端末条件、権限継承 | ユーザーと役割の対応、既存制限、確認担当 |
-
-## 0.3. 主体と既存の条件付きアクセスを確認する
-
-### 対象テナントとサブスクリプションを照合する
+## 0.2. Azure portal にサインインし、対象を照合する
 
 1. 社内 PC のブラウザで [Azure portal](https://portal.azure.com) を開きます。
 2. 案内された検証用の個人アカウントでサインインします。
-3. ポータル上部の検索欄に「サブスクリプション」と入力します。
-4. 検索結果の [サブスクリプション] を選択します。
-5. 管理担当者から案内されたサブスクリプションを一覧から選択します。
-6. [概要] の名称とサブスクリプション ID を案内された値と照合します。
-7. ポータル上部の検索から [Microsoft Entra ID] を開きます。
-8. [プロパティ] を選択します。
-9. [テナント ID] を管理担当者から案内された値と照合します。
-10. 照合結果と確認日を手元の非公開メモに記録します。
+3. ポータル右上の [Settings]（[設定]、歯車のアイコン）を選択します。
+4. 設定画面の [Language + region]（[言語 + 地域]）を選択します。
+5. [Language]（[言語]）の一覧で [日本語] を選択します。
+6. [Apply]（[適用]）を選択します。
+7. 設定画面を再度開きます。
+8. 言語が [日本語] になっていることを確認します。
+9. ポータル上部の検索欄に「サブスクリプション」と入力します。
+10. 検索結果の [サブスクリプション] を選択します。
+11. 管理担当者から案内されたサブスクリプションを一覧から選択します。
+12. [概要] の名称とサブスクリプション ID を案内された値と照合します。
+13. ポータル上部の検索から [Microsoft Entra ID] を開きます。
+14. [プロパティ] を選択します。
+15. [テナント ID] を管理担当者から案内された値と照合します。
+16. 照合結果と確認日を手元の非公開メモに記録します。
 
-> **画面の見え方** 表示言語が英語の場合は、ポータル右上の [Settings]（歯車）→ [Language + region] → [Language] で [日本語] を選び、[Apply] を押します。第1章でも同じ設定を確認します。テナントとサブスクリプションは別の ID です。混同して同じものとして転記しないようにします。
+> **補足** 本手順の画面名と項目名は、Microsoft Learn 日本語版の表記（2026-10 時点）に合わせています。ポータルの表示言語が英語のままだと項目名が一致しないため、最初に日本語に揃えます。
 
-> **Note** 対象が見つからない場合は、右上の [設定] → [ディレクトリとサブスクリプション] で現在のディレクトリとサブスクリプションの絞り込みを確認します。別のディレクトリを使用中なら、案内されたディレクトリの [切り替え] を選択して手順 3 からやり直します。Entra の情報を閲覧できない場合は管理担当者に照合を依頼し、確認のためだけに管理権限を追加しません。
+> **画面の見え方** テナントとサブスクリプションは別の ID です。混同して同じものとして転記しないようにします。
 
-### 構築担当と試験ユーザーを決める
+> **Note** 対象が見つからない場合は、右上の [設定] → [ディレクトリとサブスクリプション] で現在のディレクトリとサブスクリプションの絞り込みを確認します。別のディレクトリを使用中なら、案内されたディレクトリの [切り替え] を選択して手順 9 からやり直します。Entra の情報を閲覧できない場合は管理担当者に照合を依頼し、確認のためだけに管理権限を追加しません。
 
-1. 部門管理者に、専用 RG の作成と RG 内のロール割当を誰が行うか確認します。
-2. 自分で実施できない操作がある場合は、操作名と管理者への依頼先を記録します。
-3. 実施者ごとの略号と `rg-agentgov-<略号>-run1` の命名を決めます。
-4. 検証チーム内で、下表の役割に対応するユーザーを選びます。
+## 0.3. 自分のロールを確認する
 
-| 主体 | 役割 | 注意点 |
+Standard setup の公式テンプレート 41 を展開する実施者には、次のロールが必要です。
+
+| 何をするか | 要るロール |
+|---|---|
+| Foundry account と project の作成 | **Foundry Account Owner**（旧名 Azure AI Account Owner。ID と権限は改名前後で同じ） |
+| Standard setup で Cosmos DB・AI Search・Storage に RBAC を付与 | `Microsoft.Authorization/roleAssignments/write` を持つロール。**所有者**・**ユーザー アクセス管理者**・**ロールベースのアクセス制御管理者** のいずれか |
+| Azure Policy の割当（第9章） | **Resource Policy Contributor** または所有者。共同作成者では定義・割当を作れません |
+| 予算アラートの作成（第1章） | 所有者。共同作成者と Cost Management 共同作成者は自分が作った予算のみ操作できます |
+| モデルのクォータ閲覧 | **Cognitive Services Usages Reader**（サブスクリプション スコープ）。増枠要求は所有者か共同作成者 |
+
+1. ポータル上部の検索に「サブスクリプション」と入力します。
+2. 検索結果の [サブスクリプション] を選択します。
+3. 一覧から検証用サブスクリプションを選択します。
+4. 左側メニューの [アクセス制御 (IAM)] を選択します。
+5. [アクセスの確認] タブを選択します。
+6. [マイ アクセスの表示] を選択します。
+7. 割り当ての一覧で、ロール名と割り当てスコープを上表の必要な操作と照合します。
+8. 不足する操作権限がある場合は、該当ロール・スコープ・対象工程・管理者への依頼先を共有 Excel に記録します。
+9. 専用 RG の作成と RG 内のロール割当を自分で実施できるかを部門管理者に確認します。
+10. 自分でできない操作の担当者を共有 Excel に記録します。
+
+> **画面の見え方** PIM を利用している環境では、[アクセスの確認] に直接ロール一覧が表示される場合があります。「資格がある」だけのロールは有効化済みとは限りません。部門で決めた PIM の有効化手順を済ませ、有効な割り当てを確認します。表のロールすべてを一律に追加するのではなく、各操作の権限を既存ロールで満たすか確認します。
+
+> **画面の見え方** このスコープでの割り当てと、上位（管理グループ）から継承した割り当てが一覧に出ます。下位（リソースグループ）だけに付いた割り当ては出ません。リソースグループを作った後に、RG のスコープでも同じ手順で確認します（[第1章 1.3](01-prerequisites.md#rg-スコープの権限の再確認)）。
+
+> **Note** 要確認: 必要ロールのスコープは Learn のページで表現が揺れます（環境セットアップのページは「Foundry Account Owner をサブスクリプション スコープで」、Standard setup の概念ページは「リソースグループの所有者かユーザー アクセス管理者」、公式テンプレート 41 の README は「Foundry Account Owner と Role Based Access Administrator」）。初回で実際に通った組み合わせを記録して確定します。
+
+> **補足** Foundry のロールは 2026 年に改名されました。Foundry User・Foundry Owner・Foundry Account Owner・Foundry Project Manager は、それぞれ旧 Azure AI User・Azure AI Owner・Azure AI Account Owner・Azure AI Project Manager です。ポータルで旧名しか見つからない場合も同じロールです。
+
+## 0.4. 命名規則を決める
+
+形式は `<リソース種別の略称>-<検証者略号>-<環境>-<連番>` です。例は `rg-funato-dev-01` です（`funato` は例示の略号です）。
+
+| 項目 | 値 |
+|---|---|
+| リソース種別の略称 | 下表の Microsoft Cloud Adoption Framework（CAF）の略称。掲載のない種別はラボ独自の略称 |
+| 検証者略号 | 英小文字で、検証者ごとに固定。PJ 名にはしません。下の名前の制約を満たす長さにします（例: Key Vault は略号14文字以内） |
+| 環境 | `dev` 固定。この検証は1環境です |
+| 連番 | `01` からの2桁。同じ種類を追加・作り直すときに上げます |
+| リージョン | Japan East だけなので名前には含めません |
+
+プロジェクトの識別は、第1章の `purpose` タグで行います。
+
+### リソース種別の略称
+
+CAF の「Azure リソースの省略形に関する推奨事項」（取得日 2026-10-14）と照合しています。
+
+| リソース種別 | 略称 |
+|---|---|
+| リソースグループ | `rg` |
+| Log Analytics ワークスペース | `log` |
+| Key Vault | `kv` |
+| ストレージ アカウント | `st` |
+| Azure Cosmos DB for NoSQL アカウント | `cosno` |
+| Azure Cosmos DB データベース | `cosmos` |
+| AI Search | `srch` |
+| Foundry account（AIServices） | `aif` |
+| Foundry account の project | `proj`（本編は `proj-<略号>-dev-<連番>`、例 `proj-funato-dev-01`） |
+| Application Insights | `appi` |
+| 仮想ネットワーク | `vnet` |
+| サブネット | `snet` |
+| App Service プラン | `asp` |
+| App Service（Web アプリ） | `app` |
+| API Management | `apim` |
+| ユーザー割り当てマネージド ID | `id` |
+| 診断設定 | `diag`（CAF の略称表にはない、このラボの決め） |
+| Fabric ワークスペース | `ws`（Azure リソースではない、このラボの決め） |
+| Entra アプリ登録 | `appreg`（Azure リソースではない、このラボの決め） |
+| Azure Policy の割当 | `policy`（CAF の略称表にはない、このラボの決め） |
+| ARM デプロイ | `deploy`（CAF の略称表にはない、このラボの決め） |
+| 予算（Cost Management） | `budget`（CAF の略称表にはない、このラボの決め） |
+
+### 名前の制約と例外
+
+英小文字を使う本ラボの規則に加え、次のサービス固有の制約を守ります。Azure 全体で一意の名前は、チーム内で重複しなくても使用済みの場合があります。
+
+| 対象 | 文字数・使える文字 | 一意の範囲・例 |
 |---|---|---|
-| 構築担当 | リソース作成・ロール割当 | 最小権限試験の主体にはしません |
-| 開発用ユーザー | Foundry User | 対象 project に限定します |
-| 呼び出し用ユーザー | Foundry Agent Consumer | エージェントとの対話専用です |
-| 無権限ユーザー | 対象へのロール割当なし | サインイン可能な検証用ユーザーを使います |
+| ストレージ アカウント | 3〜24文字。英小文字と数字のみ。区切りのハイフンを除きます | Azure 全体。`stfunatodev01` |
+| Key Vault | 3〜24文字。英数字とハイフン。先頭は英字、末尾は英数字、連続ハイフン不可 | Azure 全体。`kv-funato-dev-01` |
+| Foundry account／カスタム サブドメイン | 2〜64文字。英数字とハイフン。account 名の先頭・末尾は英数字 | account 名は RG 内、カスタム サブドメインは Azure 全体で一意。本編は `aif-<略号>-dev-<連番>`（例 `aif-funato-dev-01`）。IaC でテンプレート 41 を使う場合だけ `aif`＋略号の 9 文字以内の接頭辞（例 `aiffunato`）＋自動の英数字（[IaC の説明](../infra/README.md#パラメータを確定する)） |
+| AI Search | 2〜60文字。英小文字・数字・ハイフン。先頭2文字と末尾は英数字、連続ハイフン不可 | Azure 全体の `search.windows.net` 内。`srch-funato-dev-01` |
+| Cosmos DB アカウント | 3〜44文字。英小文字・数字・ハイフン。先頭は英小文字または数字 | Azure 全体。`cosno-funato-dev-01` |
+| API Management | 1〜50文字。英数字・ハイフン。先頭は英字、末尾は英数字 | Azure 全体。`apim-funato-dev-01` |
+| Cloud Shell 用のリソースグループ | RG の規則と同じ | 検証用 RG とは別に置き、第10章で検証用 RG を削除しても残すため、環境の位置を `shell` にします。`rg-funato-shell-01` |
 
-5. 各ユーザーの既存ロールと、グループ・上位スコープからの継承を管理者に確認します。
-6. 役割とユーザーの対応を手元の非公開メモに記録します。
-7. 未手配のユーザーについては、手配担当と第8章の試験前までの期限を記録します。
+Key Vault・Foundry account・API Management は、論理削除による保持中は同じ名前を再利用できません。同名で作り直せない場合も連番を上げます。保持の確認は [第10章](10-cleanup-cost.md#論理削除された資産を確認する) で扱います。
 
-> **補足** 上表の Foundry ロールは後工程で割り当てる予定の役割です。この章では未作成の project に割り当てません。Azure 側の具体的な権限確認は第1章、Foundry の利用者ロール設定は第5章で行います。
+1. 自分の検証者略号を決めます。
+2. チームの共有 Excel に略号を記録します。
+3. 他の人と略号が重複しないことを確認します。
+4. 上の表に従い、自分の RG 名（`rg-<略号>-dev-01`）を手元に控えます。
 
-> **Note** 要確認: 検証用ユーザーの手配と既存のグループ／上位スコープからの継承は、部門管理者と確認します。適切な主体を用意できなければ、ユーザー別の権限確認（C02）を Pending にします。既存の管理者権限を削除して試験用ユーザーに作り替えません。
+## 0.5. 完了条件
 
-### 既存の Entra 条件付きアクセスを確認する
+- Azure portal にサインインし、対象テナント・サブスクリプションを照合済みです。
+- 自分のロールとスコープを確認済みです。不足する操作権限・対象工程・依頼先は共有 Excel に記録し、依存する構築は保留にしています。
+- 自分の検証者略号の重複がなく、命名規則に沿った RG 名を控えています。
 
-この操作は、サインイン ログと条件付きアクセスポリシーの両方を閲覧できる管理担当者が行います。Learn では両方を閲覧できる最小の組み込みロールとして [セキュリティ閲覧者] が示されています。Azure RG の Owner 権限だけでは閲覧できない場合があります。
-
-1. 実施者が直前に Azure portal へサインインした時刻と使用アカウントを管理担当者に伝えます。
-2. 管理担当者が [Microsoft Entra 管理センター](https://entra.microsoft.com) にサインインします。
-3. 対象が前述の手順で照合した検証用テナントであることを確認します。
-4. 左側メニューの [Entra ID] を開きます。
-5. [監視と正常性]（[Monitoring & health]。日本語資料では「監視とヘルス」の表記もあります）を開きます。
-6. [サインイン ログ] を選択します。
-7. 日付の範囲を、手順 1 のサインイン時刻を含む期間に絞ります。
-8. ユーザーのフィルターで検証用ユーザーを指定します。
-9. 時刻・ユーザー・対象アプリケーションを照合し、該当するサインインの行を選択します。
-10. 詳細画面の [条件付きアクセス] タブを選択します。
-11. 適用されたポリシー名と、それぞれの結果を確認します。
-12. 管理担当者に、対象ユーザー・対象リソース・場所・MFA・端末条件を既存ポリシーと照合してもらいます。
-13. 下表の内容を手元の非公開メモに記録します。
-
-| 記録項目 | 確認する内容 |
-|---|---|
-| 対象イベント | 確認日時とタイムゾーン、ユーザー、対象アプリケーション／リソース |
-| サインイン | 成功／失敗と、表示された失敗理由 |
-| 条件付きアクセス | 各ポリシーの適用結果。未適用やレポート専用を強制適用と取り違えない |
-| 既存の利用条件 | 許可する接続元、MFA、端末要件、Cloud Shell 利用への制約 |
-| 確認者と保留 | 管理担当者の確認日、分からなかった点と次の確認日 |
-
-> **Note** 要確認: 実環境の表示名と閲覧可否は初回で照合します。ログが見つからない場合は、テナント・期間・ユーザー・アプリケーションを見直します。ポリシー欄が空でも「制限なし」とせず、管理担当者に確認します。閲覧できない実施者は、管理担当者の確認結果を受け取ればよく、全員がこの管理画面を開く必要はありません。
-
-> **補足** 既存ポリシーは変更しません。CAE（継続的アクセス評価）は対象サービスとクライアントに依存します。サインインが成功したことだけをもって、Foundry のトークン失効やリソース側の IP 制限を確認できたとは見なしません。ネットワーク境界・送信先の確認（C08）の動作試験は、アプリまで作成した後の第8章で行います。
-
-### ネットワークの方針を揃える
-
-1. ネットワーク担当者から、検証用 PC が Azure へ接続するときの公開 IPv4 CIDR を受け取ります。
-2. PC 内のプライベート IP ではなく、会社の出口に相当する公開 IP であることを担当者に確認します。
-3. プロキシ等により出口が複数ある場合は、今回の接続で使う範囲を確認します。
-4. 第8章で使う許可外接続元を、会社の利用ルールに沿って担当者と決めます。
-5. 同じユーザー・同じ対象・同じ操作で接続元だけを比較できるか確認します。
-6. CIDR・接続元・利用条件を手元の非公開メモに記録します。
-
-> **Note** 許可外接続元で既存の条件付きアクセスによりサインイン自体が拒否される場合は、その事実を記録します。それだけでは対象リソースの IP 制限による拒否を確認できません。比較経路が用意できない場合は C08 の該当試験を Pending とし、既存ポリシーを緩めません。
-
-第1章で `.env` を用意するときにこの値を転記します。この段階では、未作成のリソースに対する設定や呼び出し試験は行いません。各リソースの IP 制限と認証は、それぞれを作成する章で設定します。
-
-| 方針 | 適用 |
-|---|---|
-| 人の入口 | 社内 IP に限定。認証は Entra ID |
-| App Service → Foundry | 第7章で送信 VNet 統合＋サービス エンドポイントを追加。Foundry は社内 IP 規則と統合サブネットの VNet 規則を併用 |
-| ツール用 APIM | ネットワーク上は公開し、Entra の許可主体で制限。社内 IP のみの規則をツール API 全体に適用しない |
-| エージェントのツール | 第4章ではツールなし。第7章で許可先だけを追加 |
-| サービス間通信 | 社内 PC の IP と異なるため、各経路を確認 |
-| 変更できない前提 | Agent 365 なし、既存の条件付きアクセスを変更しない |
-
-> **Note** 要確認: 第4章では Cosmos DB 接続の Preview 例外と、BYO への接続設定の根拠を確認済みですが、実機の到達は未確認です。第3・4・7章に残る到達・認証の確認事項は各章の条件に従います。事前確認だけで「全章が通る」とせず、資料上の保留と自分の権限不足を区別して記録します。
-
-### Fabric の事前条件を確認する
-
-1. Fabric 管理担当者に、Foundry と同じテナントを使用することを確認します。
-2. 容量管理担当者に、事前確認済みの容量と検証用ワークスペースへの割り当て可否を確認します。
-3. 課長に、容量の利用可否・費用負担・利用期間を確認します。
-4. Fabric 管理担当者に、下表の利用条件を照合してもらいます。
-5. 未確定の条件と確認担当を非公開で記録します。
-
-| 項目 | 条件・確認時期 |
-|---|---|
-| テナントと容量 | 同一テナント。有料 F2 以上、または Fabric 有効の Power BI Premium P1 以上。第1章前に利用判断、第7章前に割り当てを確認 |
-| リージョン | データエージェントと元データの容量を同一リージョンに配置。第7章前に照合 |
-| テナント設定 | データエージェントの利用許可と、必要に応じた cross-geo 処理・保存の許可。第7章前に管理担当者が確認 |
-| 作成・共有 | ワークスペース、レイクハウス、データエージェントの作成・公開・共有権限。第7章前に確認 |
-| 試験ユーザー | Fabric 利用ライセンスの要否は要確認。容量 SKU と利用形態を Fabric 管理担当者が照合 |
-| Foundry のロール | 第5章の Consumer 設計を維持。Fabric 試験専用主体への Foundry User 付与可否を管理担当者に確認 |
-
-> **Note** 要確認: テナント設定の現在値・対象グループ・ライセンス要否を管理担当者が実環境で確認します。Fabric の前提が未確定なら第7章の Fabric 工程と C11 を Pending とします。容量の新規作成はこの手順では行いません。
-
-## 0.4. 完了条件
-
-次の表の各行を「確認済み」または「保留」にします。保留には担当・期限・影響する工程を必ず添えます。
-
-| 項目 | 確認済みとする条件 | 保留時の扱い |
-|---|---|---|
-| 対象と構築担当 | テナント・サブスクリプションを照合し、専用 RG の命名と作成・ロール割当の担当が決まった | 構築を開始しない |
-| 費用と期間 | 月予算・通貨・通知先・終了予定日が合意済み | 有料リソースの作成を開始しない |
-| 社内接続 | 社内公開 IPv4 CIDR と既存のアクセス条件を確認済み | 条件に依存する作成・試験を停止 |
-| 試験ユーザーと許可外接続元 | 対応するユーザー・接続元を確認済み、または手配担当と期限を記録済み | C02／C08 の該当試験は Pending。構築とは分けて管理 |
-| Fabric | 容量・利用条件を確認済み、または第7章前の確認担当・期限を記録済み | 依存する Fabric 工程と C11 は Pending |
-| 検証判定 | 事前確認の完了と、C01〜C10 の試験合格を区別している | 未実施の試験を Pass にしない |
-
-## 0.5. うまくいかない場合
+## 0.6. うまくいかない場合
 
 | 困ったこと | 最初に確認する場所・内容 | 次の対応と再開条件 |
 |---|---|---|
-| 対象サブスクリプションが出ない | ポータルの [設定] → [ディレクトリとサブスクリプション]、使用アカウント | 管理者へ対象 ID とアクセス権の照合を依頼。対象が一致してから再開 |
-| Entra のログを開けない | 使用テナント、ログとポリシーの両方の閲覧権限 | Entra 管理担当者へ確認を依頼。担当者の確認結果を非公開で受領 |
-| 予算・CIDR・構築権限が未決 | 0.2 の担当表 | 確認担当と期限を記録し、依存する構築を保留 |
-| 試験ユーザー・許可外接続元が未手配 | C02／C08 に必要な比較条件 | 手配担当と期限を記録。独立した準備だけ進め、既存管理者の権限や既存ポリシーは変えない |
+| 対象サブスクリプションが出ない | [設定] → [ディレクトリとサブスクリプション]、使用アカウント | 管理者へ対象 ID とアクセス権の照合を依頼し、結果を記録します。対象が一致してから再開します |
+| Entra のテナント ID を閲覧できない | 使用テナントと閲覧権限 | 管理担当者に照合を依頼し、確認結果を非公開で受け取ります。確認だけのために管理権限は追加しません |
+| 必要なロールが不足している | 0.3 の必要ロールとスコープ、PIM の有効化状態 | 不足・依頼先・対象工程を共有 Excel に記録し、担当者による実施または権限の確認後に依存工程を再開します |
 
-詰まった内容は、節・手順番号・期待した表示・実際の表示・確認担当・再確認日が分かる形で記録します。この章でのトラブル対応のために既存のアクセス制限を変更しません。
+節・手順番号・期待した表示・実際の表示・確認担当・再確認日を記録します。既存のアクセス制限は変更せず、対象を切り替えた場合は検証用テナント・サブスクリプションへ戻して照合します。
 
-## 0.6. 次の操作
+## 0.7. 次の操作
 
-第1章で専用 RG、予算、Log Analytics を実際に作ります。
-
-## 0.7. 費用
-
-Fabric 容量の費用は既存見積りに含まれません。事前確認済みの容量を使い、利用可否・費用負担・期間は課長判断とします。金額は要見積りです。
-
-この章は確認のみです。既存契約の費用がゼロという意味ではありません。
-
-## 0.8. 対象外
-
-第7章で App Service の送信 VNet 統合と従来型サービス エンドポイントを作ります。Private Endpoint・VNet injection・VPN・Azure Firewall・WAF・Bastion・NAT Gateway は作りません。Managed VNet と、第4章の承認済み Azure Cosmos DB 接続と第7章の Fabric ツール（D18）を除く Preview 機能の操作も対象外です。Cosmos DB 接続は学習目的の例外で、他の Preview 機能には広げません。本番との差は [付録 B](92-appendix-production-diff.md) にまとめます。
+第1章で専用 RG・Log Analytics・予算アラートを作ります。
 
 ### 出典
 
-- 出典: [Fabric データエージェントのテナント設定](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-tenant-settings)（取得日 2026-09-24）
-
-- 出典: [Foundry の Fabric ツール](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/fabric)（取得日 2026-09-24）
-- 出典: [Fabric から Foundry で利用する](https://learn.microsoft.com/en-us/fabric/data-science/data-agent-foundry)（取得日 2026-09-24）
-
-- 出典: [テナント ID を検索する](https://learn.microsoft.com/ja-jp/entra/fundamentals/how-to-find-tenant)（取得日 2026-09-20）
-- 出典: [Azure portal の設定](https://learn.microsoft.com/ja-jp/azure/azure-portal/set-preferences)（取得日 2026-09-20）
-- 出典: [Entra アクティビティログへのアクセス](https://learn.microsoft.com/ja-jp/entra/identity/monitoring-health/howto-access-activity-logs)（取得日 2026-09-20）
-
-- 出典: [App Service VNet 統合](https://learn.microsoft.com/ja-jp/azure/app-service/overview-vnet-integration)（取得日 2026-09-16。D14 に伴う整合修正の根拠）
-
-- 出典: [Foundry の RBAC](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/rbac-foundry)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault を portal で作成](https://learn.microsoft.com/ja-jp/azure/key-vault/general/quick-create-portal)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Azure ロールの割当](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/role-assignments-portal)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault の RBAC](https://learn.microsoft.com/ja-jp/azure/key-vault/general/rbac-guide)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault のネットワーク](https://learn.microsoft.com/ja-jp/azure/key-vault/general/network-security)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Key Vault の論理削除](https://learn.microsoft.com/ja-jp/azure/key-vault/general/soft-delete-overview)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Standard setup](https://learn.microsoft.com/ja-jp/azure/foundry/agents/concepts/standard-agent-setup)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [BYO リソース](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/use-your-own-resources)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Search のロール認証](https://learn.microsoft.com/ja-jp/azure/search/search-security-enable-roles)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Storage 共有キーの無効化](https://learn.microsoft.com/ja-jp/azure/storage/common/shared-key-authorization-prevent)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Cosmos DB の RBAC とキー無効化](https://learn.microsoft.com/ja-jp/azure/cosmos-db/nosql/how-to-connect-role-based-access-control)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Foundry Tools のローカル認証無効化](https://learn.microsoft.com/ja-jp/azure/ai-services/disable-local-auth)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [条件付きアクセスの適用ログ](https://learn.microsoft.com/ja-jp/entra/identity/monitoring-health/how-to-view-applied-conditional-access-policies)（取得日 2026-09-20）
-- 出典: [継続的アクセス評価](https://learn.microsoft.com/ja-jp/entra/identity/conditional-access/concept-continuous-access-evaluation)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [Easy Auth の OAuth トークン](https://learn.microsoft.com/ja-jp/azure/app-service/configure-authentication-oauth-tokens)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [APIM の Managed Identity 認証](https://learn.microsoft.com/ja-jp/azure/api-management/authentication-managed-identity-policy)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [az keyvault](https://learn.microsoft.com/ja-jp/cli/azure/keyvault)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [az role assignment](https://learn.microsoft.com/ja-jp/cli/azure/role/assignment)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [az resource](https://learn.microsoft.com/ja-jp/cli/azure/resource)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
-- 出典: [公式テンプレート 41（固定コミット）](https://github.com/microsoft-foundry/foundry-samples/tree/58e4127567f7e9afcf0145d874df890284ca5faf/infrastructure/infrastructure-setup-bicep/41-standard-agent-setup)（既存ドラフトから引継ぎ。今回の変更は実行順の整理）
+- 出典: [テナント ID を検索する](https://learn.microsoft.com/ja-jp/entra/fundamentals/how-to-find-tenant)（取得日 2026-10-14）
+- 出典: [Azure portal の設定](https://learn.microsoft.com/ja-jp/azure/azure-portal/set-preferences)（取得日 2026-10-14）
+- 出典: [Azure RBAC のアクセス確認](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/check-access)（取得日 2026-10-14）
+- 出典: [Azure ロールの割当](https://learn.microsoft.com/ja-jp/azure/role-based-access-control/role-assignments-portal)（取得日 2026-10-14）
+- 出典: [Foundry の RBAC](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/rbac-foundry)（取得日 2026-10-14）
+- 出典: [Azure リソースの省略形に関する推奨事項](https://learn.microsoft.com/ja-jp/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations)（取得日 2026-10-14）
+- 出典: [名前付け規則を定義する](https://learn.microsoft.com/ja-jp/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming)（取得日 2026-10-14）
+- 出典: [Azure リソースの名前付け規則と制限事項](https://learn.microsoft.com/ja-jp/azure/azure-resource-manager/management/resource-name-rules)（取得日 2026-10-14）
+- 出典: [Foundry Tools のカスタム サブドメイン](https://learn.microsoft.com/ja-jp/azure/ai-services/cognitive-services-custom-subdomains)（取得日 2026-10-14）
+- 出典: [Key Vault の論理削除](https://learn.microsoft.com/ja-jp/azure/key-vault/general/soft-delete-overview)（取得日 2026-10-14）
+- 出典: [Foundry リソースの回復と消去](https://learn.microsoft.com/ja-jp/azure/ai-services/recover-purge-resources)（取得日 2026-10-14）
+- 出典: [API Management の論理削除](https://learn.microsoft.com/ja-jp/azure/api-management/soft-delete)（取得日 2026-10-14）
+- 出典: [Azure built-in roles for Privileged](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/privileged)（取得日 2026-09-15）
+- 出典: [Azure built-in roles for Management and governance](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/management-and-governance)（取得日 2026-09-15）
+- 出典: [Foundry Agent Service: environment setup](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup)（取得日 2026-09-15）
+- 出典: [Standard agent setup](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-15）
+- 出典: [foundry-samples 41-standard-agent-setup README（固定コミット）](https://github.com/microsoft-foundry/foundry-samples/blob/58e4127567f7e9afcf0145d874df890284ca5faf/infrastructure/infrastructure-setup-bicep/41-standard-agent-setup/README.md)（取得日 2026-09-15）
+- 出典: [AI Search の名前付け規則](https://learn.microsoft.com/ja-jp/rest/api/searchservice/naming-rules)（取得日 2026-10-14）
+- 出典: [AI Search のサービス名](https://learn.microsoft.com/ja-jp/azure/search/search-create-service-portal)（取得日 2026-10-14）
 
 ---
 

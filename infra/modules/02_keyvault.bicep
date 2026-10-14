@@ -1,14 +1,19 @@
 // 未検証・Run 1 で確定。未コンパイル。実効 RBAC と到達は要確認。
 targetScope = 'resourceGroup'
 param location string
-@maxLength(9)
-param prefix string
+@description('検証者略号。英小文字で第0章 0.4 の制約を満たす値。例 funato')
+@minLength(1)
+@maxLength(14)
+param operatorCode string
+@description('名前の2桁連番（01〜99）。Run 番号とは別に管理する')
+@minLength(2)
+@maxLength(2)
+param nameSequence string = '01'
 @minLength(1)
 param allowedIpRanges string[]
 param tags object = {}
-var suffix = substring(uniqueString(resourceGroup().id, prefix), 0, 11)
 resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: '${prefix}-kv-${suffix}'
+  name: 'kv-${operatorCode}-dev-${nameSequence}'
   location: location
   tags: tags
   properties: {

@@ -9,7 +9,7 @@
 | 名前 | 型 | 既定値 | allowed | 必須か | 用途（README／不足分は宣言・依存module） | Run 1 の設定 |
 |---|---|---|---|---|---|---|
 | `location` | `string` | `'eastus'` | australiaeast, canadaeast, eastus, eastus2, francecentral, japaneast, koreacentral, norwayeast, polandcentral, southindia, swedencentral, switzerlandnorth, uaenorth, uksouth, westus, westus2, westus3, westeurope, southeastasia, brazilsouth, germanywestcentral, italynorth, southafricanorth, southcentralus | 省略可（既定あり） | リソースとprojectのリージョン | `japaneast` |
-| `aiServices` | `string` | `'foundy'` | 制約なし | 省略可（既定あり） | account名の接頭辞（41は最大9文字） | `lab`（ラッパの命名prefixと一致） |
+| `aiServices` | `string` | `'foundy'` | 制約なし | 省略可（既定あり） | account名の接頭辞（41は最大9文字） | `aiffunato`（`aif`＋実施者略号。自分の略号に置き換える） |
 | `firstProjectName` | `string` | `'project'` | 制約なし | 省略可（既定あり） | project名の接頭辞 | `project` |
 | `projectDescription` | `string` | `'some description'` | 制約なし | 省略可（既定あり） | projectの説明 | `エージェント統制の個人検証` |
 | `displayName` | `string` | `'project'` | 制約なし | 省略可（既定あり） | projectの表示名 | `エージェント統制検証` |
@@ -27,7 +27,7 @@
 | `deploymentTimestamp` | `string` | `utcNow('yyyyMMddHHmmss')` | 制約なし | 省略可（既定あり） | 命名suffixに混ぜる時刻文字列（READMEに個別説明なし、コードで確認） | `20260915000000`は非秘密の固定例。同じRGで再実行しても変更しない |
 
 
-`aiServices`にはmaxLength(9)制約があります。全paramは既定値を持ち構文上は省略可ですが、目標構成のためにBYO ID・モデル版・固定時刻を確定する必要があります。`utcNow()`の既定を使うと毎回suffixが変わります。
+`aiServices` には maxLength(9) 制約があります。これは IaC でテンプレート 41 を使う場合だけの制約で、本編の portal 作成名 `aif-<略号>-dev-<連番>` には適用しません。IaC は `aif`＋略号を 9 文字以内（略号は6文字以内）で指定し、account 名は `<接頭辞><自動の英数字>` になります。`firstProjectName` にも自動の英数字が付くため、例の `project` を維持し、本編の `proj-<略号>-dev-<連番>` と区別して生成名を記録します。全paramは既定値を持ち構文上は省略可ですが、目標構成のためにBYO ID・モデル版・固定時刻を確定する必要があります。`utcNow()`の既定を使うと毎回suffixが変わります。
 
 ## 2. Run 1の目標構成との対応
 
@@ -79,7 +79,7 @@
 | 名前 | 型 | 既定値 | allowed | 必須か | 用途（README／不足分は宣言・依存module） | 旧設定（非採用） |
 |---|---|---|---|---|---|---|
 | `location` | `string` | `'eastus'` | westus, eastus, eastus2, japaneast, francecentral, spaincentral, uaenorth, southcentralus, italynorth, germanywestcentral, brazilsouth, southafricanorth, australiaeast, swedencentral, canadaeast, canadacentral, westeurope, westus3, uksouth, southindia, koreacentral, polandcentral, switzerlandnorth, norwayeast | 省略可（既定あり） | リソースとprojectのリージョン | `japaneast` |
-| `aiServices` | `string` | `'aiservices'` | 制約なし | 省略可（既定あり） | account名の接頭辞（41は最大9文字） | `lab`（ラッパの命名prefixと一致） |
+| `aiServices` | `string` | `'aiservices'` | 制約なし | 省略可（既定あり） | account名の接頭辞（非採用の15の調査記録） | `lab`（当時の旧設定。現行41の例には使わない） |
 | `modelName` | `string` | `'gpt-4.1'` | 制約なし | 省略可（既定あり） | 配置するモデル名 | `gpt-5-mini`（提供確認前） |
 | `modelFormat` | `string` | `'OpenAI'` | 制約なし | 省略可（既定あり） | モデルの提供元 | `OpenAI` |
 | `modelVersion` | `string` | `'2025-04-14'` | 制約なし | 省略可（既定あり） | 配置するモデルの版 | `<model-version>`：要確認。gpt-4.1の既定版を流用しない |

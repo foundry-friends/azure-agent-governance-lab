@@ -4,7 +4,7 @@
 // 参照: https://learn.microsoft.com/en-us/azure/templates/microsoft.consumption/budgets （取得日 2026-09-15）
 targetScope = 'resourceGroup'
 
-@description('予算の名前。例: budget-agentgov-<略号>-run1')
+@description('予算の名前。例: budget-<略号>-dev-01')
 param budgetName string
 
 @description('月予算（USD・整数）。上長と合意した値を .env の BUDGET_AMOUNT_USD から渡す')

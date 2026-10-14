@@ -13,7 +13,13 @@
       "value": "lab"
     },
     "aiServices": {
-      "value": "lab"
+      "value": "aiffunato"
+    },
+    "operatorCode": {
+      "value": "<略号>"
+    },
+    "nameSequence": {
+      "value": "01"
     },
     "firstProjectName": {
       "value": "project"

@@ -2,7 +2,7 @@
 
 進め方: README の第0〜10章を順番に実施します。第3章の完了条件を満たしてから進めます。
 
-> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。G1〜G3 の根拠確認済み・C08 の到達は初回実行で確認。更新日 2026-09-20。
+> **Note** 状態: ドラフト（Learn 2026-09 時点の記述に基づく・未実行）。G1〜G3 の根拠確認済み・C08 の到達は初回実行で確認。更新日 2026-09-20。命名規則のみ 2026-10-14 に改訂（Learn の命名欄・カスタム サブドメインを再確認）。
 
 > **Note** Preview: Azure Cosmos DB 接続は 2026-09 時点で Preview（SLA なし・本番非推奨）。本手順では NoSQL に触れる体験を優先して採用します（AGENTS.md「Preview は載せない」の例外の一つ。第7章の Fabric ツールは D18 の別の限定例外）。
 
@@ -113,13 +113,17 @@ Learn の手動作成順は「基盤 → account・project・接続 → 管理�
 |---|---|
 | サブスクリプション / RG | 今回の実施者専用の対象 |
 | リージョン | Japan East |
-| Foundry 名 | `<prefix>-<account-suffix>`。接頭辞は実施者略号を含み最大 9 文字 |
+| Foundry 名 | `aif-<略号>-dev-<連番>`（例 `aif-funato-dev-01`） |
 | 受信アクセス | 選択したネットワーク＋社内 CIDR。第7章で統合サブネットの VNet 規則を追加 |
 | システム割り当てマネージド ID | オン |
 | 暗号化 | Microsoft マネージド キー |
 | Agent service のリソース | 第3章で記録した 3 つの ARM ID と一致 |
 | 資格情報用 Key Vault | 第2章の Vault は独立した監査対象。ここではカスタム接続せず Microsoft 管理の仕組みを使用 |
 | Application Insights | 作成・接続しない。第6章の本文監査／Entra 接続の保留を維持 |
+
+Foundry 名はカスタム サブドメインになり Azure 全体で一意である必要があるため、使用済みなら [第0章 0.4 の命名規則](00-before-start.md#04-命名規則を決める) に従って連番を上げます。
+
+本編の project 名は `proj-<略号>-dev-<連番>`（例 `proj-funato-dev-01`）とし、project 名を入力する際に指定します。9 文字以内の接頭辞は [IaC で公式テンプレート 41 を使う場合](../infra/README.md#パラメータを確定する) だけの制約です。
 
 > **Note** 要確認: 根拠資料が英語のため [Basics]（基本）・[Network]（ネットワーク）・[Identity]（ID）・[Encryption]（暗号化）・[Storage]・[Review + create]・[Create] と配下の項目の日本語表示は初回に照合します。想定外のリソース作成や Application Insights 接続が必須になる場合は確定せず記録します。
 
@@ -218,7 +222,7 @@ echo "${OLD_KEY:-cleared}"
 5. 別タブで [Microsoft Foundry](https://ai.azure.com) を開きます。
 6. [New Foundry] がオンであることを確認します。
 7. プロジェクト選択画面で、今回の account に作られた初期 project を選択します。
-8. project の詳細で、名前と親 account を確認します。
+8. project の詳細で、名前が `proj-<略号>-dev-<連番>` と一致し、親 account が今回の対象であることを確認します。
 9. Azure portal で対応する project のリソースを開き、[JSON ビュー] の `id` と `identity.principalId` を控えます。
 10. 下の対応表で ID を区別して保存します。
 
@@ -371,7 +375,7 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 3. Blob service の診断設定を選択します。
 4. 既存設定のログカテゴリと送信先 LAW を確認します。
 5. 同じ送信設定がなければ [診断設定の追加] を選択します。
-6. 設定名に `diag-agentgov-law` を入力します。
+6. 設定名に `diag-<略号>-dev-01` を入力します。
 7. 下表の Storage のログカテゴリを選択します。
 8. [Log Analytics ワークスペースへの送信] をオンにします。
 9. 検証用サブスクリプションと第1章の専用 LAW を選択します。
@@ -381,7 +385,7 @@ az monitor diagnostic-settings categories list --resource '<target-resource-id>'
 
 | 項目 | 値 |
 |---|---|
-| 診断設定名 | `diag-agentgov-law` |
+| 診断設定名 | `diag-<略号>-dev-01` |
 | Storage Blob のログ | 実在を確認した StorageRead / StorageWrite / StorageDelete |
 | Search のログ | 実在を確認した OperationLogs |
 | 宛先 | [Log Analytics ワークスペースへの送信] で第1章の専用 LAW |
@@ -591,6 +595,8 @@ Fabric 容量の費用は既存見積りに含まれません。事前確認済�
 - 出典: [Foundry の GA 範囲](https://learn.microsoft.com/ja-jp/azure/foundry/concepts/general-availability)（取得日 2026-09-15）
 
 - 出典: [Foundry 作成ウィザード](https://learn.microsoft.com/en-us/azure/ai-services/multi-service-resource)（取得日 2026-09-20）
+- 出典: [Foundry リソースを作成する](https://learn.microsoft.com/ja-jp/azure/ai-services/multi-service-resource)（取得日 2026-10-14・命名欄を確認）
+- 出典: [Foundry Tools のカスタム サブドメイン](https://learn.microsoft.com/ja-jp/azure/ai-services/cognitive-services-custom-subdomains)（取得日 2026-10-14）
 - 出典: [接続の種類](https://learn.microsoft.com/en-us/azure/foundry/how-to/connections-add)（取得日 2026-09-20）
 - 出典: [Standard setup の作成順と権限](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/standard-agent-setup)（取得日 2026-09-20）
 - 出典: [Basic／Standard の比較と公開 Standard setup](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup)（取得日 2026-09-20）

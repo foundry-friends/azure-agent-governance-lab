@@ -2,14 +2,19 @@
 // Cosmos と Search に networkAcls.defaultAction はありません。非空 IP 規則で制限します。
 targetScope = 'resourceGroup'
 param location string
-@maxLength(9)
-param prefix string
+@description('検証者略号。英小文字で第0章 0.4 の制約を満たす値。例 funato')
+@minLength(1)
+@maxLength(14)
+param operatorCode string
+@description('名前の2桁連番（01〜99）。Run 番号とは別に管理する')
+@minLength(2)
+@maxLength(2)
+param nameSequence string = '01'
 @minLength(1)
 param allowedIpRanges string[]
 param tags object = {}
-var suffix = uniqueString(resourceGroup().id, prefix)
 resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
-  name: '${prefix}-cosmos-${suffix}'
+  name: 'cosno-${operatorCode}-dev-${nameSequence}'
   location: location
   kind: 'GlobalDocumentDB'
   tags: tags
@@ -29,7 +34,7 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   }
 }
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
-  name: '${prefix}st${suffix}'
+  name: 'st${operatorCode}dev${nameSequence}'
   location: location
   kind: 'StorageV2'
   tags: tags
@@ -53,7 +58,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 resource search 'Microsoft.Search/searchServices@2025-05-01' = {
-  name: '${prefix}-search-${suffix}'
+  name: 'srch-${operatorCode}-dev-${nameSequence}'
   location: location
   tags: tags
   sku: { name: 'basic' }

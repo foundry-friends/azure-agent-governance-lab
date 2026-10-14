@@ -2,7 +2,14 @@
 // ip-filter のみで Entra 認証やバックエンド許可を実装したとは扱いません。
 targetScope = 'resourceGroup'
 param location string
-param prefix string
+@description('検証者略号。英小文字で第0章 0.4 の制約を満たす値。例 funato')
+@minLength(1)
+@maxLength(14)
+param operatorCode string
+@description('名前の2桁連番（01〜99）。Run 番号とは別に管理する')
+@minLength(2)
+@maxLength(2)
+param nameSequence string = '01'
 @minLength(1)
 param allowedIpRanges string[]
 @minLength(1)
@@ -10,10 +17,9 @@ param allowedIpAddressRanges array
 param publisherEmail string
 param publisherName string
 param tags object = {}
-var suffix = uniqueString(resourceGroup().id, prefix)
 var ipElements = [for range in allowedIpAddressRanges: '<address-range from="${range.from}" to="${range.to}" />']
 resource apim 'Microsoft.ApiManagement/service@2024-05-01' = {
-  name: '${prefix}-apim-${suffix}'
+  name: 'apim-${operatorCode}-dev-${nameSequence}'
   location: location
   tags: tags
   identity: { type: 'SystemAssigned' }
@@ -36,7 +42,7 @@ resource ipPolicy 'Microsoft.ApiManagement/service/policies@2024-05-01' = {
   }
 }
 resource appPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: '${prefix}-plan-${suffix}'
+  name: 'asp-${operatorCode}-dev-${nameSequence}'
   location: location
   kind: 'linux'
   tags: tags
@@ -44,7 +50,7 @@ resource appPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   properties: { reserved: true }
 }
 resource app 'Microsoft.Web/sites@2023-12-01' = {
-  name: '${prefix}-app-${suffix}'
+  name: 'app-${operatorCode}-dev-${nameSequence}'
   location: location
   kind: 'app,linux'
   tags: tags

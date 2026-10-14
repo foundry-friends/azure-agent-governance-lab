@@ -50,6 +50,11 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 
 | 項目 | 値 |
 |---|---|
+| `operatorCode` | `.env` の `OPERATOR_CODE` と同じ検証者略号。英小文字・1〜14文字（例 `funato`） |
+| `nameSequence` | `01`〜`99` の2桁連番（既定 `01`）。Run 番号とは独立 |
+| `firstProjectName` | IaC の例は `project` を維持。41 が自動の英数字を追加するため、生成名を確認して記録する。本編の `proj-<略号>-dev-<連番>` とは区別する |
+| `prefix` | ラッパ内部の module デプロイ識別子用。例の `lab` を維持し、Foundry account の接頭辞は `aiServices` で明示する |
+| `aiServices` | テンプレート 41 用の account 名の接頭辞。`aif`＋`operatorCode` と同じ略号で 9 文字以内（略号は6文字以内、例 `aiffunato`）。example.json の例を自分の略号に置き換える。account 名は `<接頭辞><自動の英数字>` になる |
 | Run 1 | `enableApim=false` |
 | Run 2 | `enableApim=true` |
 | 社内 IP | 非空の公開 IPv4 CIDR、全許可は禁止 |
@@ -58,7 +63,11 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 | `deployApplicationInsights` | 必ず false、S6 で後追い |
 | 監視・Policy | false は保留。必要パラメータと手順を確定してから有効化 |
 
+本編の Azure portal ウィザードでは [第0章 0.4](../docs/00-before-start.md#04-命名規則を決める) の `aif-<略号>-dev-<連番>`／`proj-<略号>-dev-<連番>` を使います。9 文字制約はテンプレート 41 の `aiServices` パラメータだけの制約で、本編の account 名には適用しません。41 による自動の英数字の付加は vendor の仕様を維持します。
+
 監視を有効化する場合は S1 の LAW ID を `workspaceResourceId` に指定します。Policy を有効化する場合は定義 ID・effect・parameters を指定します。単一の割当骨子で全対象型を覆ったことにはなりません。
+
+自前リソースの名前は第0章 0.4 の規則に従い、ハッシュによる接尾辞は付けません。名前が使用済みなら連番を上げ、GUI で記録した名前と揃えます。既存リソースの改名・移行は行いません。名前を変えて既存 RG に再展開すると別リソースの作成になるため、既存環境への一括適用はしません。41 が生成する project・ID・接続等と内部 module のデプロイ識別子は既存のままです。`run` タグは検証の回（`1` / `2`）で、名前の連番とは一致を要求しません。同じ環境で Run 2 に進む場合も名前の連番は維持します。
 
 ## 固定停止点と未検証事項
 
@@ -72,7 +81,7 @@ unzip /tmp/foundry-samples.zip -d infra/vendor
 
 ## 再実行
 
-同じ RG・固定 SHA・deploymentTimestamp・prefix を再使用します。41 再実行時の設定巻き戻りや capability host の冪等性は要確認です。変更できると仮定せず、当日手順と S9 の削除を使います。
+同じ RG・固定 SHA・deploymentTimestamp・prefix・aiServices・operatorCode・nameSequence・firstProjectName を再使用します。41 再実行時の設定巻き戻りや capability host の冪等性は要確認です。変更できると仮定せず、当日手順と S9 の削除を使います。
 
 ---
 

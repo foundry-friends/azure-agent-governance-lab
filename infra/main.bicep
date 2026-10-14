@@ -8,6 +8,14 @@ param enableDiagnostics bool = false
 param enablePolicyDefender bool = false
 @maxLength(9)
 param prefix string = 'lab'
+@description('検証者略号。英小文字で第0章 0.4 の制約を満たす値。例 funato')
+@minLength(1)
+@maxLength(14)
+param operatorCode string
+@description('名前の2桁連番（01〜99）。Run 番号とは別に管理する')
+@minLength(2)
+@maxLength(2)
+param nameSequence string = '01'
 param location string = 'japaneast'
 @maxLength(9)
 param aiServices string = prefix
@@ -37,7 +45,8 @@ module keyVault 'modules/02_keyvault.bicep' = {
   name: '${prefix}-keyvault'
   params: {
     location: location
-    prefix: prefix
+    operatorCode: operatorCode
+    nameSequence: nameSequence
     allowedIpRanges: allowedIpRanges
     tags: tags
   }
@@ -46,7 +55,8 @@ module data 'modules/04_data.bicep' = {
   name: '${prefix}-data'
   params: {
     location: location
-    prefix: prefix
+    operatorCode: operatorCode
+    nameSequence: nameSequence
     allowedIpRanges: allowedIpRanges
     tags: tags
   }
@@ -87,7 +97,8 @@ module diagnostics 'modules/06_diagnostics.bicep' = if (enableDiagnostics) {
   name: '${prefix}-diagnostics'
   params: {
     location: location
-    prefix: prefix
+    operatorCode: operatorCode
+    nameSequence: nameSequence
     workspaceResourceId: workspaceResourceId
     tags: tags
   }
@@ -96,7 +107,8 @@ module gateway 'modules/07_gateway_app.bicep' = if (enableApim) {
   name: '${prefix}-gateway'
   params: {
     location: location
-    prefix: prefix
+    operatorCode: operatorCode
+    nameSequence: nameSequence
     allowedIpRanges: allowedIpRanges
     allowedIpAddressRanges: allowedIpAddressRanges
     publisherEmail: publisherEmail
@@ -107,7 +119,8 @@ module gateway 'modules/07_gateway_app.bicep' = if (enableApim) {
 module policyDefender 'modules/08_policy_defender.bicep' = if (enablePolicyDefender) {
   name: '${prefix}-policy'
   params: {
-    prefix: prefix
+    operatorCode: operatorCode
+    nameSequence: nameSequence
     policyDefinitionResourceId: policyDefinitionResourceId
     policyEffect: policyEffect
     policyParameters: policyParameters
