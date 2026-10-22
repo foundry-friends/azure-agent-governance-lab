@@ -35,7 +35,7 @@
 
 1. ブラウザで [Azure portal](https://portal.azure.com) を開きます。
 2. 第0章で確認した検証用の個人アカウントでサインインします。
-3. [第0章 0.2](00-before-start.md#02-azure-portal-にサインインし対象を照合する) で日本語表示にしたことを確認します。
+3. [第0章 0.2](00-before-start.md#02-azure-portal-にサインインしid-を控える) で日本語表示にしたことを確認します。
 
 > **補足** Cloud Shell のコンテナーは Microsoft のネットワークで動き、**送信元 IP は社内 IP ではありません**。リソースの作成や設定の照合（ARM）は影響を受けませんが、社内 IP 許可リストを付けたリソースのデータ面（Blob の読み書き・Key Vault のシークレット取得）は Cloud Shell からは拒否されます。D14 のツール用 APIM は ID で制限するため、Cloud Shell からの拒否を IP 制限の結果と決めつけません。データ面の試験は社内 PC のブラウザ（ポータル・Foundry ポータル・第7章の呼び出しアプリ）から行います。各リソースの許可リストには、事前に確認した社内公開 IP を使います。
 
@@ -216,7 +216,7 @@ az cognitiveservices usage list --location japaneast --output table
 
 1. 実施者が直前に Azure portal へサインインした時刻と使用アカウントを管理担当者に伝えます。
 2. 管理担当者が [Microsoft Entra 管理センター](https://entra.microsoft.com) にサインインします。
-3. 対象が [第0章 0.2](00-before-start.md#02-azure-portal-にサインインし対象を照合する) で照合した検証用テナントであることを確認します。
+3. 対象が [第0章 0.2](00-before-start.md#02-azure-portal-にサインインしid-を控える) で控えたテナント ID の検証用テナントであることを確認します。
 4. 左側メニューの [Entra ID] を開きます。
 5. [監視と正常性]（[Monitoring & health]。日本語資料では「監視とヘルス」の表記もあります）を開きます。
 6. [サインイン ログ] を選択します。
