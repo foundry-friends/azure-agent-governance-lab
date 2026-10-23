@@ -97,7 +97,7 @@ CAF の「Azure リソースの省略形に関する推奨事項」（取得日 
 | Key Vault | `kv` |
 | ストレージ アカウント | `st` |
 | Azure Cosmos DB for NoSQL アカウント | `cosno` |
-| Azure Cosmos DB データベース | `cosmos` |
+| Azure Cosmos DB データベース | `cosmos`（Foundry が自動で作る `enterprise_memory` を使うため、このラボでは名前を付けません。[第4章](04-foundry-agent.md)） |
 | AI Search | `srch` |
 | Foundry account（AIServices） | `aif` |
 | Foundry account の project | `proj`（本編は `proj-<略号>-dev-<連番>`、例 `proj-funato-dev-01`） |
@@ -125,7 +125,7 @@ CAF の「Azure リソースの省略形に関する推奨事項」（取得日 
 | Key Vault | 3〜24文字。英数字とハイフン。先頭は英字、末尾は英数字、連続ハイフン不可 | Azure 全体。`kv-funato-dev-01` |
 | Foundry account／カスタム サブドメイン | 2〜64文字。英数字とハイフン。account 名の先頭・末尾は英数字 | account 名は RG 内、カスタム サブドメインは Azure 全体で一意。本編は `aif-<略号>-dev-<連番>`（例 `aif-funato-dev-01`）。IaC でテンプレート 41 を使う場合だけ `aif`＋略号の 9 文字以内の接頭辞（例 `aiffunato`）＋自動の英数字（[IaC の説明](../infra/README.md#パラメータを確定する)） |
 | AI Search | 2〜60文字。英小文字・数字・ハイフン。先頭2文字と末尾は英数字、連続ハイフン不可 | Azure 全体の `search.windows.net` 内。`srch-funato-dev-01` |
-| Cosmos DB アカウント | 3〜44文字。英小文字・数字・ハイフン。先頭は英小文字または数字 | Azure 全体。`cosno-funato-dev-01` |
+| Azure Cosmos DB for NoSQL アカウント | 3〜44文字。英小文字・数字・ハイフン。先頭は英小文字または数字 | Azure 全体。`cosno-funato-dev-01` |
 | API Management | 1〜50文字。英数字・ハイフン。先頭は英字、末尾は英数字 | Azure 全体。`apim-funato-dev-01` |
 | Cloud Shell 用のリソースグループ | RG の規則と同じ | 検証用 RG とは別に置き、第10章で検証用 RG を削除しても残すため、環境の位置を `shell` にします。`rg-funato-shell-01` |
 
